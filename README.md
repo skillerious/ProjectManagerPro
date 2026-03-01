@@ -1,201 +1,103 @@
 # Project Manager Pro
 
-Desktop project management app built with Electron.  
-It combines project scaffolding, Git tooling, extensions/themes, workflow automation, and secure product registration in one local-first application.
+<p align="center">
+  <strong>Desktop Project Workflow Hub built with Electron</strong><br/>
+  Project scaffolding, Git workflows, extensions/themes, task automation, secure registration, and app updates in one place.
+</p>
 
-## Overview
+<p align="center">
+  <img alt="Platform" src="https://img.shields.io/badge/Platform-Windows-0078D4?logo=windows&logoColor=white">
+  <img alt="Electron" src="https://img.shields.io/badge/Electron-39.x-47848F?logo=electron&logoColor=white">
+  <img alt="Node" src="https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white">
+  <img alt="License" src="https://img.shields.io/badge/License-MIT-22c55e">
+  <img alt="Updater" src="https://img.shields.io/badge/Auto%20Update-GitHub%20Releases-181717?logo=github">
+</p>
 
-Project Manager Pro is a personal engineering project focused on:
+---
 
-- Practical desktop workflow tooling
-- Secure IPC and safe command execution patterns
-- Real-world product key and registration flows
-- Updater and packaging architecture for Electron apps
+## Table of Contents
 
-This repository includes the full app source, tests, and build configuration.
+- [What This Project Is](#what-this-project-is)
+- [Feature Highlights](#feature-highlights)
+- [Feature Matrix](#feature-matrix)
+- [Security and Registration](#security-and-registration)
+- [Activation Keys](#activation-keys)
+- [Getting Started](#getting-started)
+- [Build and Release](#build-and-release)
+- [Update Source](#update-source)
+- [Project Structure](#project-structure)
+- [Scripts](#scripts)
+- [Testing](#testing)
+- [License](#license)
 
-## Core Features
+---
 
-### Project and Workspace Management
+## What This Project Is
 
-- Create projects from templates (`Electron`, `React`, `Vue`, `Node.js`, `Python Flask`, and more)
-- Import existing repositories/projects
-- Export projects
-- Rename/delete projects
-- Recent projects tracking and quick-access
-- Workspace snapshots:
-  - Save workspace state
-  - List snapshots
-  - Restore snapshots
-- Per-project task profiles:
-  - Save task profiles
-  - Load and run task profiles
+Project Manager Pro is a personal engineering project focused on practical desktop tooling and secure architecture patterns.
 
-### Git Tools
+Main goals:
 
-- Repository status, history, and diffs
-- Stage/unstage, commit, pull, push, fetch, sync
-- Branch operations:
-  - Create
-  - Checkout
-  - Delete
-- Stash operations:
-  - Create
-  - List
-  - Apply
-  - Pop
-- Advanced operations:
-  - Merge
-  - Rebase
-  - Cherry-pick
-  - Reset
-  - Revert
-  - Clean
-- Remote management:
-  - List remotes
-  - Add remote
-  - Remove remote
-- Tags:
-  - List
-  - Create
-  - Delete
-- Conflict assistant flow:
-  - List conflicts
-  - Resolve conflict entries
-  - Continue/abort merge
-- Hunk-level diff and selective apply
+- Build a real desktop workflow app, not a demo-only shell
+- Practice secure IPC, command/path validation, and defensive Electron patterns
+- Implement a product-key registration system as a cryptography learning exercise
+- Deliver a production-style packaging and GitHub-releases update flow
 
-### GitHub Integration
+---
 
-- Save/disconnect GitHub token
-- Load authenticated user profile
-- Prepare upload candidates
-- Guided upload flow for project publishing
+## Feature Highlights
 
-### Extensions and Themes
+- Smart project creation from templates (Electron, React, Vue, Node, Python Flask, and more)
+- Advanced Git operations in-app (branching, stash, diff/hunks, merge/rebase/cherry-pick, tags, remotes)
+- Conflict assistant and merge-resolution helpers
+- Workspace snapshots and task-profile automation
+- Extension/theme installation and per-extension settings
+- Indexed search and operation queue with cancel/retry behavior
+- Smart dialogs for settings and update flows
+- Secure preload bridge with strict IPC allowlists
+- Product registration with encrypted local license state and machine fingerprint checks
+- GitHub Releases update checks/download/install with update channels
 
-- Install/uninstall extensions
-- Enable/disable installed extensions
-- Extension settings persistence
-- Theme extension loading and CSS injection
-- Download/install themes from URL metadata
+---
 
-### Search and Automation
+## Feature Matrix
 
-- Indexed workspace search:
-  - Build index
-  - Query index
-- Operation queue:
-  - Enqueue jobs
-  - Track queue state
-  - Cancel/retry jobs
-- Command palette with workflow actions
+| Area | Included |
+|---|---|
+| Project Management | Create, import, export, rename, delete, recent projects, workspace path control |
+| Templates | Multi-stack templates and scaffolded project bootstrapping |
+| Git Core | Status, commit, pull, push, fetch, sync, history, diff |
+| Git Advanced | Branching, stash workflow, merge/rebase/cherry-pick, reset/revert/clean |
+| Merge/Conflict Tools | Conflict listing, conflict resolution actions, merge continue/abort |
+| GitHub | Token auth, user lookup, upload candidate discovery, guided project upload |
+| Extensions/Themes | Install/uninstall, enable/disable, settings persistence, theme CSS loading |
+| Automation | Workspace snapshots, task profiles, operation queue, indexed search |
+| Settings UX | First-run setup, validated settings model, smart save/unsaved dialog flows |
+| Security | IPC channel allowlists, sanitized inputs, validated command execution, secure license handling |
+| Updates | Stable/beta/alpha channels, check/download/install, rollback-to-stable checks |
 
-### Settings and UX
+---
 
-- First-run setup wizard
-- Advanced settings model with sanitation and validation
-- Smart settings save/unsaved dialogs with animated fallback UX
-- External links configurable from settings
-- Keyboard shortcuts and menu actions
+## Security and Registration
 
-### App Updates
+> [!NOTE]
+> Product registration is implemented as part of this personal project to learn and practice cryptography, secure local persistence, key validation, and device-binding behavior.
+>
+> **No purchase is required** for this repository/demo setup.
 
-- Update channel support (`stable`, `beta`, `alpha`)
-- Check/download/install updates
-- Stable rollback check flow
-- Live update status events to renderer
-- **Release source configured for GitHub releases**:
-  - `https://github.com/skillerious/ProjectManagerPro/releases`
+Security architecture includes:
 
-### Security Architecture
+- Strict renderer-to-main IPC allowlists in preload bridge
+- Safer command/path validation for shell and Git operations
+- Encrypted/signed local license payload handling
+- Product-key metadata and checksum validation
+- Device fingerprint matching with grace-period logic
 
-- Secure preload bridge (`AppBridge`) with strict IPC allowlists
-- Centralized command and path validation
-- Safer git command wrappers with structured error handling
-- Product key validation and metadata extraction
-- Device-bound license persistence and fingerprint checks
-- Grace-period handling on hardware changes
-- Encrypted license storage and signed payload verification
-
-## Tech Stack
-
-- Electron
-- Node.js
-- Vanilla JS / HTML / CSS renderer architecture
-- `electron-updater` for auto-update pipeline
-
-## Project Structure
-
-```text
-AppManager/
-  main.js
-  renderer.js
-  preload.js
-  index.html
-  styles.css
-  main/
-    update-manager.js
-    operation-queue.js
-    workspace-services.js
-  tests/
-  assets/
-```
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+ recommended
-- npm
-- Windows is the primary target (NSIS packaging configured)
-
-### Install Dependencies
-
-```bash
-npm install
-```
-
-### Run in Development
-
-```bash
-npm start
-```
-
-### Run Safety Tests
-
-```bash
-npm run test:safety
-```
-
-### Build Installer (Windows)
-
-```bash
-npm run build-win
-```
-
-### Build Distribution
-
-```bash
-npm run dist
-```
-
-## Update Source Configuration
-
-The app updater is configured to use GitHub Releases from:
-
-- `https://github.com/skillerious/ProjectManagerPro/releases`
-
-In build configuration, publish provider is GitHub (`owner: skillerious`, `repo: ProjectManagerPro`).
-
-## Product Registration Notice
-
-This app includes a product registration system because this is a personal project where I explored cryptography, validation design, and secure local license storage workflows.
-
-- There is **no purchase required** for this repository/demo setup.
-- You can use the keys below to activate tiers in-app.
+---
 
 ## Activation Keys
+
+Use any key below in the app registration flow.
 
 ### Standard Keys
 
@@ -242,12 +144,112 @@ This app includes a product registration system because this is a personal proje
 3025-9944-1204-1768
 ```
 
-## Notes
+---
 
-- Update download/install actions depend on packaged build behavior.
-- Development mode typically does not perform full install/restart update flow.
-- Use a packaged build to validate end-to-end updater installation behavior.
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ (recommended)
+- npm
+- Windows environment (primary packaging target)
+
+### Install
+
+```bash
+npm install
+```
+
+### Run (Development)
+
+```bash
+npm start
+```
+
+---
+
+## Build and Release
+
+### Build Windows Installer
+
+```bash
+npm run build-win
+```
+
+### Build Distribution
+
+```bash
+npm run dist
+```
+
+### Build Keygen App
+
+```bash
+npm run build-keygen
+```
+
+---
+
+## Update Source
+
+Updater is configured to pull from GitHub releases:
+
+- https://github.com/skillerious/ProjectManagerPro/releases
+
+Configured provider values:
+
+- `provider`: `github`
+- `owner`: `skillerious`
+- `repo`: `ProjectManagerPro`
+
+---
+
+## Project Structure
+
+```text
+AppManager/
+  main.js
+  renderer.js
+  preload.js
+  index.html
+  styles.css
+  main/
+    update-manager.js
+    operation-queue.js
+    workspace-services.js
+  tests/
+  scripts/
+  assets/
+```
+
+---
+
+## Scripts
+
+| Script | Purpose |
+|---|---|
+| `npm start` | Launch app in development mode |
+| `npm run test:safety` | Run safety-focused test suite |
+| `npm run build-win` | Build Windows installer |
+| `npm run dist` | Build distribution artifacts |
+| `npm run keygen` | Run key generation app |
+| `npm run build-keygen` | Build key generation app package |
+| `npm run generate:key` | Generate product key via script |
+
+---
+
+## Testing
+
+Run:
+
+```bash
+npm run test:safety
+```
+
+This validates security utilities, license logic, operation queue, workspace services, and IPC contract coverage.
+
+---
 
 ## License
 
-MIT (repository codebase)
+MIT
