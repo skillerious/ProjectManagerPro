@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm start)",
+      "Bash(npm install)",
+      "Bash(node -e:*)",
+      "Bash(node -p:*)",
+      "Bash(findstr:*)",
+      "Bash(.node_modules.binelectron.cmd .)",
+      "Bash(npx electron .)",
+      "Bash(npx electron:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm install:*)",
+      "Bash(node --check:*)",
+      "Bash(timeout /t 3)",
+      "Bash(taskkill:*)",
+      "Bash(nul)",
+      "Bash(timeout /t 1)",
+      "Bash(find:*)",
+      "Bash(\"./node_modules/.bin/electron.cmd\" .)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

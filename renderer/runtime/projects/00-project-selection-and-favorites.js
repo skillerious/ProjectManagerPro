@@ -2015,6 +2015,26 @@ async function deleteProjectFiles(project) {
 const GH_STEPS = ['create-repo', 'init-git', 'add-remote', 'stage-files', 'commit', 'push'];
 const GH_STEP_WEIGHTS = { 'create-repo': 20, 'init-git': 10, 'add-remote': 10, 'stage-files': 15, 'commit': 15, 'push': 30 };
 
+function getGitHubUploadProgressMode() {
+    const overlay = document.getElementById('gh-upload-progress');
+    const modeFromOverlay = overlay?.dataset?.uploadMode;
+    if (modeFromOverlay === 'existing' || modeFromOverlay === 'new') {
+        return modeFromOverlay;
+    }
+
+    if (typeof getGitHubUploadMode === 'function') {
+        return getGitHubUploadMode();
+    }
+    return 'new';
+}
+
+function updateGitHubUploadProgressStepLabels(mode = 'new') {
+    const createStepLabel = document.querySelector('.gh-step[data-step="create-repo"] .gh-step-label');
+    if (createStepLabel) {
+        createStepLabel.textContent = mode === 'existing' ? 'Verify repository' : 'Create repository';
+    }
+}
+
 function setGitHubUploadProgressMode(active) {
     const modalContent = document.querySelector('#github-upload-modal .modal-content.gh-modal');
     if (!modalContent) {
@@ -2027,6 +2047,9 @@ function setGitHubUploadProgressMode(active) {
 function ghUploadProgressShow() {
     const overlay = document.getElementById('gh-upload-progress');
     if (!overlay) return;
+    const uploadMode = getGitHubUploadProgressMode();
+    overlay.dataset.uploadMode = uploadMode;
+    updateGitHubUploadProgressStepLabels(uploadMode);
 
     const modalElement = document.getElementById('github-upload-modal');
     if (modalElement) {
@@ -2063,8 +2086,12 @@ function ghUploadProgressShow() {
     document.getElementById('gh-ring-fill').style.strokeDashoffset = '125.66';
 
     // Reset header
-    document.getElementById('gh-progress-title').textContent = 'Uploading to GitHub';
-    document.getElementById('gh-progress-subtitle').textContent = 'Preparing your project...';
+    document.getElementById('gh-progress-title').textContent = uploadMode === 'existing'
+        ? 'Updating GitHub Repository'
+        : 'Uploading to GitHub';
+    document.getElementById('gh-progress-subtitle').textContent = uploadMode === 'existing'
+        ? 'Preparing selected changes...'
+        : 'Preparing your project...';
     const progressHeader = overlay.querySelector('.gh-progress-header');
     const progressBarWrap = overlay.querySelector('.gh-progress-bar-wrap');
     if (progressHeader) {
@@ -2135,6 +2162,7 @@ function ghUploadProgressUpdate(step, status, detail) {
 function ghUploadProgressComplete(success, repo, errorMsg) {
     const overlay = document.getElementById('gh-upload-progress');
     if (!overlay) return;
+    const uploadMode = getGitHubUploadProgressMode();
 
     githubUploadLastResultSuccessful = Boolean(success);
 
@@ -2166,7 +2194,9 @@ function ghUploadProgressComplete(success, repo, errorMsg) {
             : '<i class="fas fa-times-circle"></i>';
 
         document.getElementById('gh-result-message').textContent = success
-            ? `Repository "${repo.name}" created and uploaded successfully.`
+            ? (uploadMode === 'existing'
+                ? `Repository "${repo?.full_name || repo?.name || 'target repository'}" updated successfully.`
+                : `Repository "${repo?.name || 'new repository'}" created and uploaded successfully.`)
             : (errorMsg || 'The upload could not be completed.');
 
         const closeBtn = document.getElementById('gh-result-close');
@@ -2204,7 +2234,12 @@ document.getElementById('gh-result-close')?.addEventListener('click', () => {
         return;
     }
 
-    document.getElementById('github-repo-name')?.focus();
+    const mode = typeof getGitHubUploadMode === 'function' ? getGitHubUploadMode() : 'new';
+    if (mode === 'existing') {
+        document.getElementById('github-existing-repo-target')?.focus();
+    } else {
+        document.getElementById('github-repo-name')?.focus();
+    }
     updateGitHubUploadSubmitState();
 });
 

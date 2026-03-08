@@ -3389,7 +3389,7 @@ npm --version</pre>
                     </div>
                     <div>
                         <h2 class="np-title">Upload to GitHub</h2>
-                        <p class="np-subtitle">Create a new repository and push your project</p>
+                        <p class="np-subtitle">Create a new repository or safely update an existing one</p>
                     </div>
                 </div>
                 <button class="np-close modal-close">
@@ -3398,8 +3398,43 @@ npm --version</pre>
             </div>
 
             <div class="np-body">
-                <!-- Repository Name -->
                 <div class="np-field">
+                    <label class="np-label">
+                        <i class="fas fa-route"></i>
+                        Upload Target
+                    </label>
+                    <div class="gh-target-mode-group">
+                        <label class="gh-target-mode-option selected" data-mode="new">
+                            <input type="radio" name="github-upload-mode" value="new" checked />
+                            <div class="gh-target-mode-icon">
+                                <i class="fas fa-plus-circle"></i>
+                            </div>
+                            <div class="gh-target-mode-text">
+                                <span class="gh-target-mode-title">New Repository</span>
+                                <span class="gh-target-mode-desc">Create on GitHub and upload selected files</span>
+                            </div>
+                            <div class="gh-target-mode-check">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                        </label>
+                        <label class="gh-target-mode-option" data-mode="existing">
+                            <input type="radio" name="github-upload-mode" value="existing" />
+                            <div class="gh-target-mode-icon">
+                                <i class="fas fa-code-branch"></i>
+                            </div>
+                            <div class="gh-target-mode-text">
+                                <span class="gh-target-mode-title">Existing Repository</span>
+                                <span class="gh-target-mode-desc">Update a repository you already have access to</span>
+                            </div>
+                            <div class="gh-target-mode-check">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Repository Name -->
+                <div class="np-field" id="gh-new-repo-name-field">
                     <label class="np-label" for="github-repo-name">
                         <i class="fas fa-pen"></i>
                         Repository Name
@@ -3410,8 +3445,19 @@ npm --version</pre>
                     <span class="np-input-hint gh-repo-name-hint" id="github-repo-name-hint">Use 1-100 characters: letters, numbers, ".", "_" or "-".</span>
                 </div>
 
+                <div class="np-field gh-existing-field" id="gh-existing-repo-field" style="display:none;">
+                    <label class="np-label" for="github-existing-repo-target">
+                        <i class="fas fa-link"></i>
+                        Existing Repository
+                    </label>
+                    <div class="np-input-wrapper">
+                        <input type="text" id="github-existing-repo-target" class="np-input" placeholder="owner/repo or https://github.com/owner/repo" spellcheck="false" />
+                    </div>
+                    <span class="np-input-hint gh-repo-name-hint" id="github-existing-repo-hint">Use owner/repository or full GitHub URL.</span>
+                </div>
+
                 <!-- Description -->
-                <div class="np-field">
+                <div class="np-field" id="gh-new-repo-description-field">
                     <label class="np-label" for="github-repo-description">
                         <i class="fas fa-align-left"></i>
                         Description
@@ -3421,7 +3467,7 @@ npm --version</pre>
                 </div>
 
                 <!-- Visibility -->
-                <div class="np-field">
+                <div class="np-field" id="gh-new-repo-visibility-field">
                     <label class="np-label">
                         <i class="fas fa-eye"></i>
                         Visibility
@@ -3454,6 +3500,24 @@ npm --version</pre>
                             </div>
                         </label>
                     </div>
+                </div>
+
+                <div class="np-field gh-existing-field" id="gh-existing-options-field" style="display:none;">
+                    <label class="np-label">
+                        <i class="fas fa-shield-halved"></i>
+                        Existing Repository Safety
+                    </label>
+                    <label class="np-toggle">
+                        <input type="checkbox" id="github-existing-force-push" />
+                        <span class="np-toggle-switch"></span>
+                        <span class="np-toggle-content">
+                            <i class="fas fa-triangle-exclamation np-toggle-icon license"></i>
+                            Force push (overwrite remote branch history)
+                        </span>
+                    </label>
+                    <small class="gh-existing-safety-note" id="github-existing-safety-note">
+                        Recommended: keep force push disabled to preserve repository history.
+                    </small>
                 </div>
 
                 <div class="np-field">
@@ -3496,7 +3560,7 @@ npm --version</pre>
                 </div>
 
                 <!-- Options -->
-                <div class="np-options">
+                <div class="np-options" id="gh-new-repo-options">
                     <label class="np-toggle">
                         <input type="checkbox" id="github-add-readme" />
                         <span class="np-toggle-switch"></span>

@@ -2259,6 +2259,12 @@ function notifyOperationQueueStateChanges() {
             if (job.status === 'completed') {
                 const result = job.result && typeof job.result === 'object' ? job.result : {};
                 if (result.success) {
+                    if (result.mode) {
+                        const overlay = document.getElementById('gh-upload-progress');
+                        if (overlay) {
+                            overlay.dataset.uploadMode = result.mode === 'existing' ? 'existing' : 'new';
+                        }
+                    }
                     ghUploadProgressComplete(true, result.repo || null);
                     void refreshGitStatus();
                 } else {
@@ -2560,4 +2566,3 @@ function rebuildDocumentationSearchIndex() {
         };
     }).filter((entry) => Boolean(entry.tab));
 }
-

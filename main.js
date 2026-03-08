@@ -1164,14 +1164,23 @@ function deriveGitPushProgressDetail(rawLine) {
 async function executeGitPushWithProgress({
   cwd,
   branch,
+  remoteName = 'origin',
+  forcePush = false,
   timeout = GIT_PUSH_TIMEOUT_MS,
   onProgress,
   isCancelled = () => false
 }) {
   const gitExecutable = getGitExecutable();
-  const args = ['push', '--progress', '-u', 'origin', branch];
-  const commandDisplay = `${gitExecutable} push --progress -u origin ${branch}`;
-  logger.info(`Executing: ${commandDisplay}`, { cwd, operation: `Push ${branch}` });
+  const safeRemoteName = typeof remoteName === 'string' && /^[A-Za-z0-9._-]+$/.test(remoteName.trim())
+    ? remoteName.trim()
+    : 'origin';
+  const args = ['push', '--progress'];
+  if (forcePush) {
+    args.push('--force');
+  }
+  args.push('-u', safeRemoteName, branch);
+  const commandDisplay = `${gitExecutable} push --progress${forcePush ? ' --force' : ''} -u ${safeRemoteName} ${branch}`;
+  logger.info(`Executing: ${commandDisplay}`, { cwd, operation: `Push ${safeRemoteName}/${branch}` });
 
   return new Promise((resolve) => {
     let resolved = false;
@@ -1285,7 +1294,7 @@ async function executeGitPushWithProgress({
         return;
       }
       const elapsedSeconds = Math.max(1, Math.floor((Date.now() - pushStartTime) / 1000));
-      const baseDetail = lastProgressDetail || `Pushing ${branch}...`;
+      const baseDetail = lastProgressDetail || `Pushing ${safeRemoteName}/${branch}...`;
       onProgress(`${baseDetail} (${elapsedSeconds}s elapsed)`);
     }, 6000);
 
@@ -1335,7 +1344,7 @@ async function executeGitPushWithProgress({
         error: userError,
         stderr,
         cwd,
-        operation: `Push ${branch}`
+        operation: `Push ${safeRemoteName}/${branch}`
       });
       safeResolve({
         success: false,
@@ -3170,9 +3179,80 @@ function extractGitHubErrorMessage(payload, fallback = 'GitHub request failed') 
   return fallback;
 }
 
+function parseGitHubRepositoryTarget(rawTarget) {
+  const source = typeof rawTarget === 'string' ? rawTarget.trim() : '';
+  if (!source) {
+    return { valid: false, error: 'Repository target is required' };
+  }
+
+  let candidate = source;
+  if (/^https?:\/\//i.test(candidate)) {
+    try {
+      const parsed = new URL(candidate);
+      if (!/^(?:www\.)?github\.com$/i.test(parsed.hostname || '')) {
+        return { valid: false, error: 'Only github.com repositories are supported' };
+      }
+      candidate = parsed.pathname || '';
+    } catch {
+      return { valid: false, error: 'Repository URL is invalid' };
+    }
+  } else if (/^ssh:\/\/git@github\.com\//i.test(candidate)) {
+    candidate = candidate.replace(/^ssh:\/\/git@github\.com\//i, '');
+  } else if (/^git@github\.com:/i.test(candidate)) {
+    candidate = candidate.replace(/^git@github\.com:/i, '');
+  }
+
+  candidate = candidate
+    .split(/[?#]/, 1)[0]
+    .replace(/\.git$/i, '')
+    .replace(/^\/+/, '')
+    .replace(/\/+$/, '');
+
+  const segments = candidate.split('/').filter(Boolean);
+  if (segments.length !== 2) {
+    return { valid: false, error: 'Use owner/repository format or full GitHub URL' };
+  }
+
+  const [owner, repo] = segments;
+  if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(owner)) {
+    return { valid: false, error: 'Repository owner is invalid' };
+  }
+  if (!/^[A-Za-z0-9._-]{1,100}$/.test(repo) || repo.startsWith('.') || repo.endsWith('.')) {
+    return { valid: false, error: 'Repository name is invalid' };
+  }
+
+  return {
+    valid: true,
+    value: {
+      owner,
+      repo,
+      fullName: `${owner}/${repo}`
+    }
+  };
+}
+
 function normalizeGitHubRepoData(repoData) {
   if (!repoData || typeof repoData !== 'object' || Array.isArray(repoData)) {
     return { valid: false, error: 'Repository details are invalid' };
+  }
+
+  const mode = repoData.mode === 'existing' ? 'existing' : 'create';
+  if (mode === 'existing') {
+    const targetValidation = parseGitHubRepositoryTarget(repoData.existingRepoTarget);
+    if (!targetValidation.valid) {
+      return { valid: false, error: targetValidation.error };
+    }
+
+    return {
+      valid: true,
+      value: {
+        mode: 'existing',
+        existingRepoTarget: targetValidation.value.fullName,
+        owner: targetValidation.value.owner,
+        repo: targetValidation.value.repo,
+        forcePush: Boolean(repoData.forcePush)
+      }
+    };
   }
 
   const name = typeof repoData.name === 'string' ? repoData.name.trim() : '';
@@ -3186,12 +3266,14 @@ function normalizeGitHubRepoData(repoData) {
   return {
     valid: true,
     value: {
+      mode: 'create',
       name,
       description,
       isPrivate: Boolean(repoData.isPrivate),
       addReadme: Boolean(repoData.addReadme),
       addGitignore: Boolean(repoData.addGitignore),
-      addLicense: Boolean(repoData.addLicense)
+      addLicense: Boolean(repoData.addLicense),
+      forcePush: false
     }
   };
 }
@@ -3718,6 +3800,8 @@ async function handleGitHubUploadProjectRequest(sender, projectPath, repoData, c
   if (!repoValidation.valid) {
     return { success: false, error: repoValidation.error };
   }
+  const uploadMode = repoValidation.value.mode === 'existing' ? 'existing' : 'create';
+  const forcePush = Boolean(repoValidation.value.forcePush);
 
   const selectionValidation = normalizeGitHubUploadSelection(repoData?.selectedPaths);
   if (!selectionValidation.valid) {
@@ -3774,32 +3858,71 @@ async function handleGitHubUploadProjectRequest(sender, projectPath, repoData, c
       throw error;
     }
   };
+  const resolvePreferredBranch = (candidateBranch) => {
+    if (typeof candidateBranch === 'string' &&
+      /^[A-Za-z0-9._/-]+$/.test(candidateBranch) &&
+      !candidateBranch.includes('..')) {
+      return candidateBranch;
+    }
+
+    if (typeof appSettings.defaultBranch === 'string' &&
+      /^[A-Za-z0-9._/-]+$/.test(appSettings.defaultBranch) &&
+      !appSettings.defaultBranch.includes('..')) {
+      return appSettings.defaultBranch;
+    }
+
+    return 'main';
+  };
 
   try {
     assertNotCancelled();
 
-    // Step 1: Create the repository
-    sendProgress('create-repo', 'active', 'Creating repository on GitHub...');
-    const createResult = await requestGitHubApi({
-      token,
-      method: 'POST',
-      apiPath: '/user/repos',
-      body: {
-        name: repoValidation.value.name,
-        description: repoValidation.value.description,
-        private: repoValidation.value.isPrivate
-      }
-    });
+    let repository = null;
+    if (uploadMode === 'existing') {
+      sendProgress('create-repo', 'active', 'Verifying repository access...');
+      const encodedOwner = encodeURIComponent(repoValidation.value.owner);
+      const encodedRepo = encodeURIComponent(repoValidation.value.repo);
+      const verifyResult = await requestGitHubApi({
+        token,
+        method: 'GET',
+        apiPath: `/repos/${encodedOwner}/${encodedRepo}`
+      });
 
-    if (!createResult.success || !createResult.parsed || !createResult.parsed.clone_url) {
-      const message = createResult.error || 'Failed to create repository';
-      sendProgress('create-repo', 'error', message);
-      return { success: false, error: message, details: createResult.data };
+      if (!verifyResult.success || !verifyResult.parsed || !verifyResult.parsed.clone_url) {
+        const message = verifyResult.statusCode === 404
+          ? 'Repository not found or you do not have access'
+          : (verifyResult.error || 'Failed to verify repository access');
+        sendProgress('create-repo', 'error', message);
+        return { success: false, error: message, details: verifyResult.data };
+      }
+
+      repository = verifyResult.parsed;
+      sendProgress('create-repo', 'done', `Connected to ${repository.full_name || repoValidation.value.existingRepoTarget}`);
+    } else {
+      sendProgress('create-repo', 'active', 'Creating repository on GitHub...');
+      const createResult = await requestGitHubApi({
+        token,
+        method: 'POST',
+        apiPath: '/user/repos',
+        body: {
+          name: repoValidation.value.name,
+          description: repoValidation.value.description,
+          private: repoValidation.value.isPrivate
+        }
+      });
+
+      if (!createResult.success || !createResult.parsed || !createResult.parsed.clone_url) {
+        const message = createResult.error || 'Failed to create repository';
+        sendProgress('create-repo', 'error', message);
+        return { success: false, error: message, details: createResult.data };
+      }
+
+      repository = createResult.parsed;
+      sendProgress('create-repo', 'done', repoValidation.value.isPrivate ? 'Private repo created' : 'Public repo created');
     }
-    sendProgress('create-repo', 'done', repoValidation.value.isPrivate ? 'Private repo created' : 'Public repo created');
     assertNotCancelled();
 
-    const repoUrlValidation = validateGitRemoteUrl(createResult.parsed.clone_url);
+    const repoUrlValidation = validateGitRemoteUrl(repository?.clone_url || '');
     if (!repoUrlValidation.valid) {
       const message = repoUrlValidation.error || 'GitHub returned an invalid repository URL';
       sendProgress('create-repo', 'error', message);
@@ -3808,85 +3931,154 @@ async function handleGitHubUploadProjectRequest(sender, projectPath, repoData, c
 
     const repoUrl = repoUrlValidation.value;
     const authenticatedRepoUrl = buildAuthenticatedGitHubRemoteUrl(repoUrl, token);
-    const preferredBranch = typeof appSettings.defaultBranch === 'string' &&
-      /^[A-Za-z0-9._/-]+$/.test(appSettings.defaultBranch) &&
-      !appSettings.defaultBranch.includes('..')
-      ? appSettings.defaultBranch
-      : 'main';
+    let preferredBranch = resolvePreferredBranch(repository?.default_branch);
+    let pushBranch = preferredBranch;
 
     let uploadWorkspacePath = null;
     try {
-      // Step 2: Prepare isolated upload workspace and initialize git
       assertNotCancelled();
-      sendProgress('init-git', 'active', 'Preparing isolated upload workspace...');
       uploadWorkspacePath = await fs.mkdtemp(path.join(os.tmpdir(), GITHUB_UPLOAD_TEMP_PREFIX));
+
+      const copySelectedPathsIntoWorkspace = async (
+        progressStep = 'stage-files',
+        detailLabel = 'Applying selected files'
+      ) => {
+        let copiedFileCount = 0;
+        for (let index = 0; index < selectedUploadPaths.length; index += 1) {
+          assertNotCancelled();
+          const selectedPath = selectedUploadPaths[index];
+          const sourcePath = path.resolve(pathValidation.path, selectedPath);
+          const destinationPath = path.resolve(uploadWorkspacePath, selectedPath);
+
+          if (!isResolvedPathInsideRoot(uploadWorkspacePath, destinationPath)) {
+            const message = `Invalid upload destination for ${selectedPath}`;
+            sendProgress(progressStep, 'error', message);
+            return { success: false, error: message, copiedFileCount };
+          }
+
+          sendProgress(
+            progressStep,
+            'active',
+            `${detailLabel}... ${index + 1}/${selectedUploadPaths.length}`
+          );
+          copiedFileCount += await copyGitHubUploadPathRecursive(sourcePath, destinationPath);
+        }
+        return { success: true, copiedFileCount };
+      };
+
       let copiedFileCount = 0;
 
-      for (let index = 0; index < selectedUploadPaths.length; index += 1) {
-        assertNotCancelled();
-        const selectedPath = selectedUploadPaths[index];
-        const sourcePath = path.resolve(pathValidation.path, selectedPath);
-        const destinationPath = path.resolve(uploadWorkspacePath, selectedPath);
+      if (uploadMode === 'existing' && !forcePush) {
+        sendProgress('init-git', 'active', 'Cloning existing repository...');
+        const cloneArgs = authenticatedRepoUrl
+          ? ['clone', '--depth', '1', '--branch', preferredBranch, authenticatedRepoUrl, '.']
+          : ['clone', '--depth', '1', '--branch', preferredBranch, repoUrl, '.'];
+        const cloneOptions = authenticatedRepoUrl
+          ? {
+              commandDisplay: `git clone --depth 1 --branch ${preferredBranch} ${repoUrl} .`,
+              sensitive: true
+            }
+          : {};
+        let cloneResult = await executeGitArgs(cloneArgs, uploadWorkspacePath, 'Clone Existing Upload Repository', cloneOptions);
+        if (!cloneResult.success) {
+          const fallbackCloneArgs = authenticatedRepoUrl
+            ? ['clone', '--depth', '1', authenticatedRepoUrl, '.']
+            : ['clone', '--depth', '1', repoUrl, '.'];
+          const fallbackCloneOptions = authenticatedRepoUrl
+            ? {
+                commandDisplay: `git clone --depth 1 ${repoUrl} .`,
+                sensitive: true
+              }
+            : {};
+          cloneResult = await executeGitArgs(fallbackCloneArgs, uploadWorkspacePath, 'Clone Existing Upload Repository (Fallback)', fallbackCloneOptions);
+        }
+        if (!cloneResult.success) {
+          sendProgress('init-git', 'error', cloneResult.error);
+          return { success: false, error: cloneResult.error };
+        }
 
-        if (!isResolvedPathInsideRoot(uploadWorkspacePath, destinationPath)) {
-          const message = `Invalid upload destination for ${selectedPath}`;
+        const detectedBranchResult = await executeGitArgs(
+          ['rev-parse', '--abbrev-ref', 'HEAD'],
+          uploadWorkspacePath,
+          'Detect Existing Upload Branch'
+        );
+        const detectedBranch = detectedBranchResult.success
+          ? String(detectedBranchResult.output || '').trim()
+          : '';
+        if (detectedBranch && detectedBranch !== 'HEAD' && /^[A-Za-z0-9._/-]+$/.test(detectedBranch) && !detectedBranch.includes('..')) {
+          preferredBranch = detectedBranch;
+        }
+        pushBranch = preferredBranch;
+        sendProgress('init-git', 'done', `Repository snapshot ready (${repository.full_name || repoValidation.value.existingRepoTarget})`);
+
+        sendProgress('add-remote', 'active', 'Verifying remote origin...');
+        const remoteCheck = await executeGitArgs(['remote', 'get-url', 'origin'], uploadWorkspacePath, 'Verify Upload Origin');
+        if (!remoteCheck.success) {
+          sendProgress('add-remote', 'error', remoteCheck.error);
+          return { success: false, error: remoteCheck.error };
+        }
+        sendProgress('add-remote', 'done', repository.full_name || repoValidation.value.existingRepoTarget);
+      } else {
+        sendProgress('init-git', 'active', 'Preparing isolated upload workspace...');
+        const copiedSelection = await copySelectedPathsIntoWorkspace('init-git', 'Preparing selected files');
+        if (!copiedSelection.success) {
+          return { success: false, error: copiedSelection.error };
+        }
+        copiedFileCount += copiedSelection.copiedFileCount;
+
+        if (uploadMode === 'create') {
+          assertNotCancelled();
+          const optionalFileCount = await writeGitHubUploadOptionalFiles(
+            uploadWorkspacePath,
+            repoValidation.value,
+            repository?.owner?.login || ''
+          );
+          copiedFileCount += optionalFileCount;
+        }
+
+        if (copiedFileCount === 0) {
+          const message = 'Selected upload items do not contain uploadable files';
           sendProgress('init-git', 'error', message);
           return { success: false, error: message };
         }
 
-        sendProgress(
-          'init-git',
-          'active',
-          `Preparing selected files... ${index + 1}/${selectedUploadPaths.length}`
-        );
-        copiedFileCount += await copyGitHubUploadPathRecursive(sourcePath, destinationPath);
+        sendProgress('init-git', 'active', 'Initializing temporary Git repository...');
+        const initResult = await executeGitArgs(['init'], uploadWorkspacePath, 'Initialize Upload Workspace Git');
+        if (!initResult.success) {
+          sendProgress('init-git', 'error', initResult.error);
+          return { success: false, error: initResult.error };
+        }
+
+        sendProgress('init-git', 'done', `Workspace ready (${copiedFileCount} file${copiedFileCount === 1 ? '' : 's'})`);
+
+        sendProgress('add-remote', 'active', 'Configuring remote origin...');
+        const addRemoteArgs = authenticatedRepoUrl
+          ? ['remote', 'add', 'origin', authenticatedRepoUrl]
+          : ['remote', 'add', 'origin', repoUrl];
+        const addRemoteOptions = authenticatedRepoUrl
+          ? {
+              commandDisplay: `git remote add origin ${repoUrl}`,
+              sensitive: true
+            }
+          : {};
+        const addRemoteResult = await executeGitArgs(addRemoteArgs, uploadWorkspacePath, 'Add Upload Remote', addRemoteOptions);
+        if (!addRemoteResult.success) {
+          sendProgress('add-remote', 'error', addRemoteResult.error);
+          return { success: false, error: addRemoteResult.error };
+        }
+        sendProgress('add-remote', 'done', repository.full_name || repoUrl.replace('https://github.com/', ''));
       }
-
-      assertNotCancelled();
-      const optionalFileCount = await writeGitHubUploadOptionalFiles(
-        uploadWorkspacePath,
-        repoValidation.value,
-        createResult.parsed?.owner?.login || ''
-      );
-      copiedFileCount += optionalFileCount;
-
-      if (copiedFileCount === 0) {
-        const message = 'Selected upload items do not contain uploadable files';
-        sendProgress('init-git', 'error', message);
-        return { success: false, error: message };
-      }
-
-      sendProgress('init-git', 'active', 'Initializing temporary Git repository...');
-      const initResult = await executeGitArgs(['init'], uploadWorkspacePath, 'Initialize Upload Workspace Git');
-      if (!initResult.success) {
-        sendProgress('init-git', 'error', initResult.error);
-        return { success: false, error: initResult.error };
-      }
-
-      sendProgress('init-git', 'done', `Workspace ready (${copiedFileCount} file${copiedFileCount === 1 ? '' : 's'})`);
-
-      // Step 3: Add remote
-      assertNotCancelled();
-      sendProgress('add-remote', 'active', 'Configuring remote origin...');
-      const addRemoteArgs = authenticatedRepoUrl
-        ? ['remote', 'add', 'origin', authenticatedRepoUrl]
-        : ['remote', 'add', 'origin', repoUrl];
-      const addRemoteOptions = authenticatedRepoUrl
-        ? {
-            commandDisplay: `git remote add origin ${repoUrl}`,
-            sensitive: true
-          }
-        : {};
-      const addRemoteResult = await executeGitArgs(addRemoteArgs, uploadWorkspacePath, 'Add Upload Remote', addRemoteOptions);
-      if (!addRemoteResult.success) {
-        sendProgress('add-remote', 'error', addRemoteResult.error);
-        return { success: false, error: addRemoteResult.error };
-      }
-      sendProgress('add-remote', 'done', repoUrl.replace('https://github.com/', ''));
 
       // Step 4: Stage files
       assertNotCancelled();
       sendProgress('stage-files', 'active', 'Staging selected files...');
+      if (uploadMode === 'existing' && !forcePush) {
+        const copiedSelection = await copySelectedPathsIntoWorkspace('stage-files', 'Applying selected files');
+        if (!copiedSelection.success) {
+          return { success: false, error: copiedSelection.error };
+        }
+        copiedFileCount += copiedSelection.copiedFileCount;
+      }
       const stageResult = await executeGitArgs(['add', '--all', '.'], uploadWorkspacePath, 'Stage Upload Workspace');
       if (!stageResult.success) {
         sendProgress('stage-files', 'error', stageResult.error);
@@ -3898,7 +4090,9 @@ async function handleGitHubUploadProjectRequest(sender, projectPath, repoData, c
         ? stagedDiffResult.output.trim().split('\n').filter((line) => line).length
         : 0;
       if (fileCountResult === 0) {
-        const message = 'No files were staged for upload';
+        const message = uploadMode === 'existing'
+          ? 'No changes detected against the existing repository'
+          : 'No files were staged for upload';
         sendProgress('stage-files', 'error', message);
         return { success: false, error: message };
       }
@@ -3906,7 +4100,9 @@ async function handleGitHubUploadProjectRequest(sender, projectPath, repoData, c
 
       // Step 5: Commit
       assertNotCancelled();
-      sendProgress('commit', 'active', 'Creating initial commit...');
+      sendProgress('commit', 'active', uploadMode === 'existing'
+        ? 'Creating update commit...'
+        : 'Creating initial commit...');
 
       const gitUsername = typeof appSettings.gitUsername === 'string' ? appSettings.gitUsername.trim() : '';
       const gitEmail = typeof appSettings.gitEmail === 'string' ? appSettings.gitEmail.trim() : '';
@@ -3917,25 +4113,37 @@ async function handleGitHubUploadProjectRequest(sender, projectPath, repoData, c
         await executeGitArgs(['config', 'user.email', gitEmail], uploadWorkspacePath, 'Set Upload Git Email');
       }
 
-      const commitResult = await executeGitArgs(['commit', '-m', 'Initial commit'], uploadWorkspacePath, 'Initial Upload Commit');
+      const commitMessage = uploadMode === 'existing'
+        ? 'Update project files from Project Manager'
+        : 'Initial commit';
+      const commitResult = await executeGitArgs(
+        ['commit', '-m', commitMessage],
+        uploadWorkspacePath,
+        uploadMode === 'existing' ? 'Existing Upload Commit' : 'Initial Upload Commit'
+      );
       if (!commitResult.success && !(commitResult.stderr && commitResult.stderr.includes('nothing to commit'))) {
         sendProgress('commit', 'error', commitResult.error);
         return { success: false, error: commitResult.error };
       }
 
-      const branchResult = await executeGitArgs(['branch', '-M', preferredBranch], uploadWorkspacePath, `Set Upload Branch ${preferredBranch}`);
-      if (!branchResult.success) {
-        sendProgress('commit', 'error', branchResult.error);
-        return { success: false, error: branchResult.error };
+      if (uploadMode !== 'existing' || forcePush) {
+        const branchResult = await executeGitArgs(['branch', '-M', preferredBranch], uploadWorkspacePath, `Set Upload Branch ${preferredBranch}`);
+        if (!branchResult.success) {
+          sendProgress('commit', 'error', branchResult.error);
+          return { success: false, error: branchResult.error };
+        }
+        pushBranch = preferredBranch;
       }
-      sendProgress('commit', 'done', 'Initial commit created');
+      sendProgress('commit', 'done', uploadMode === 'existing' ? 'Update commit created' : 'Initial commit created');
 
       // Step 6: Push
       assertNotCancelled();
       sendProgress('push', 'active', 'Pushing to GitHub...');
       const pushResult = await executeGitPushWithProgress({
         cwd: uploadWorkspacePath,
-        branch: preferredBranch,
+        branch: pushBranch,
+        remoteName: 'origin',
+        forcePush,
         timeout: GIT_PUSH_TIMEOUT_MS,
         onProgress: (detail) => sendProgress('push', 'active', detail),
         isCancelled: () => Boolean(cancellation?.isCancelled && cancellation.isCancelled())
@@ -3943,10 +4151,19 @@ async function handleGitHubUploadProjectRequest(sender, projectPath, repoData, c
 
       if (!pushResult.success) {
         sendProgress('push', 'error', pushResult.error);
-        return { success: false, error: `Repository created but push failed: ${pushResult.error}` };
+        if (uploadMode === 'create') {
+          return { success: false, error: `Repository created but push failed: ${pushResult.error}` };
+        }
+        return { success: false, error: `Push failed: ${pushResult.error}` };
       }
-      sendProgress('push', 'done', `Pushed to ${preferredBranch}`);
-      return { success: true, repo: createResult.parsed, pushed: true };
+      sendProgress('push', 'done', forcePush ? `Force-pushed to ${pushBranch}` : `Pushed to ${pushBranch}`);
+      return {
+        success: true,
+        repo: repository,
+        pushed: true,
+        mode: uploadMode,
+        forcePush
+      };
     } finally {
       await safeRemoveDirectory(uploadWorkspacePath);
     }

@@ -889,6 +889,36 @@ function initializeGitView() {
         updateGitHubUploadSubmitState();
     });
 
+    const existingRepoTargetInput = document.getElementById('github-existing-repo-target');
+    existingRepoTargetInput?.addEventListener('input', () => {
+        updateGitHubUploadSubmitState();
+    });
+    existingRepoTargetInput?.addEventListener('blur', () => {
+        const validation = validateGitHubExistingRepoTargetInput(existingRepoTargetInput.value);
+        if (validation.valid && existingRepoTargetInput.value !== validation.normalized) {
+            existingRepoTargetInput.value = validation.normalized;
+        }
+        updateGitHubUploadSubmitState();
+    });
+
+    document.querySelectorAll('.gh-target-mode-option').forEach((option) => {
+        option.addEventListener('click', () => {
+            const targetMode = option.dataset.mode === 'existing' ? 'existing' : 'new';
+            setGitHubUploadMode(targetMode);
+        });
+    });
+    document.querySelectorAll('input[name="github-upload-mode"]').forEach((input) => {
+        input.addEventListener('change', () => {
+            const targetMode = input.value === 'existing' ? 'existing' : 'new';
+            setGitHubUploadMode(targetMode);
+        });
+    });
+
+    document.getElementById('github-existing-force-push')?.addEventListener('change', () => {
+        updateGitHubExistingSafetyNote();
+        updateGitHubUploadSubmitState();
+    });
+
     // GitHub visibility toggle styling
     document.querySelectorAll('.gh-visibility-option').forEach(option => {
         option.addEventListener('click', () => {
@@ -936,30 +966,28 @@ function initializeGitView() {
     });
 
     document.getElementById('confirm-github-upload-btn')?.addEventListener('click', async () => {
-        const repoNameInput = document.getElementById('github-repo-name');
-        const repoValidation = validateGitHubRepoNameInput(repoNameInput?.value || '');
-        if (!repoValidation.valid) {
-            updateGitHubRepoNameHint(repoValidation, { forceError: true });
-            updateGitHubUploadSubmitState();
-            showNotification(repoValidation.message || 'Repository name is invalid', 'error');
-            repoNameInput?.focus();
-            return;
-        }
-
-        if (repoNameInput && repoNameInput.value !== repoValidation.normalized) {
-            repoNameInput.value = repoValidation.normalized;
-        }
-
         if (!currentProject) {
             showNotification('No project selected', 'error');
             updateGitHubUploadSubmitState();
             return;
         }
 
-        const readiness = getGitHubUploadSubmitReadiness(repoValidation);
+        const readiness = getGitHubUploadSubmitReadiness();
         if (!readiness.canSubmit) {
+            if (readiness.mode === 'existing') {
+                updateGitHubExistingRepoHint(readiness.existingValidation, { forceError: true });
+            } else {
+                updateGitHubRepoNameHint(readiness.validation, { forceError: true });
+            }
             updateGitHubUploadSubmitState();
             showNotification(readiness.reason || 'Complete all required fields before uploading', 'error');
+            if (readiness.mode === 'existing') {
+                const existingRepoTarget = document.getElementById('github-existing-repo-target');
+                existingRepoTarget?.focus();
+            } else {
+                const repoNameInput = document.getElementById('github-repo-name');
+                repoNameInput?.focus();
+            }
             return;
         }
 
@@ -970,11 +998,52 @@ function initializeGitView() {
             return;
         }
 
-        const description = document.getElementById('github-repo-description')?.value || '';
-        const isPrivate = document.querySelector('input[name="github-visibility"]:checked')?.value === 'private';
-        const addReadme = Boolean(document.getElementById('github-add-readme')?.checked);
-        const addGitignore = Boolean(document.getElementById('github-add-gitignore')?.checked);
-        const addLicense = Boolean(document.getElementById('github-add-license')?.checked);
+        const uploadMode = readiness.mode;
+        const forcePush = uploadMode === 'existing' && Boolean(document.getElementById('github-existing-force-push')?.checked);
+        if (forcePush) {
+            const forceConfirmed = await requestGitSmartConfirmation({
+                title: 'Force Push Existing Repository',
+                subtitle: 'This will overwrite the remote branch history.',
+                detail: 'Only continue when you intentionally want to replace remote commits with your selected files.',
+                mode: 'danger',
+                icon: 'fa-triangle-exclamation',
+                confirmLabel: 'Force Push',
+                confirmVariant: 'danger',
+                notes: [
+                    'A backup branch on GitHub is recommended before force pushing.',
+                    'Collaborators will need to re-sync local clones after history rewrite.'
+                ]
+            });
+            if (!forceConfirmed) {
+                return;
+            }
+        }
+
+        let repoData;
+        if (uploadMode === 'existing') {
+            repoData = {
+                mode: 'existing',
+                existingRepoTarget: readiness.existingValidation.normalized,
+                forcePush,
+                selectedPaths
+            };
+        } else {
+            const description = document.getElementById('github-repo-description')?.value || '';
+            const isPrivate = document.querySelector('input[name="github-visibility"]:checked')?.value === 'private';
+            const addReadme = Boolean(document.getElementById('github-add-readme')?.checked);
+            const addGitignore = Boolean(document.getElementById('github-add-gitignore')?.checked);
+            const addLicense = Boolean(document.getElementById('github-add-license')?.checked);
+            repoData = {
+                mode: 'create',
+                name: readiness.validation.normalized,
+                description,
+                isPrivate,
+                addReadme,
+                addGitignore,
+                addLicense,
+                selectedPaths
+            };
+        }
 
         githubUploadInProgress = true;
         updateGitHubUploadSubmitState();
@@ -983,15 +1052,7 @@ function initializeGitView() {
         try {
             await enqueueOperation('github-upload-project', {
                 projectPath: currentProject.path,
-                repoData: {
-                    name: repoValidation.normalized,
-                    description,
-                    isPrivate,
-                    addReadme,
-                    addGitignore,
-                    addLicense,
-                    selectedPaths
-                }
+                repoData
             }, { kind: 'github-upload' });
             showNotification('GitHub upload queued. Progress is now tracked by the queue.', 'info');
         } catch (error) {
@@ -1407,6 +1468,7 @@ async function openGitHubUploadModal() {
         modalBody.scrollTop = 0;
     }
 
+    setGitHubUploadMode('new');
     const repoNameInput = document.getElementById('github-repo-name');
     if (repoNameInput) {
         repoNameInput.disabled = false;
@@ -1417,6 +1479,12 @@ async function openGitHubUploadModal() {
         repoNameInput.focus({ preventScroll: true });
         const cursorPosition = repoNameInput.value.length;
         repoNameInput.setSelectionRange(cursorPosition, cursorPosition);
+    }
+
+    const existingRepoTargetInput = document.getElementById('github-existing-repo-target');
+    if (existingRepoTargetInput) {
+        existingRepoTargetInput.value = '';
+        existingRepoTargetInput.classList.remove('gh-repo-valid', 'gh-repo-invalid');
     }
 
     githubUploadSearchQuery = '';
@@ -1445,8 +1513,10 @@ async function openGitHubUploadModal() {
         closeBtn.classList.remove('retry');
     }
 
+    updateGitHubExistingSafetyNote();
     updateGitHubUploadSubmitState();
     await loadGitHubUploadCandidates(currentProject.path);
+    await prefillGitHubExistingRepoTarget();
 
     if (repoNameInput && document.activeElement === document.body) {
         repoNameInput.focus({ preventScroll: true });
@@ -1454,6 +1524,282 @@ async function openGitHubUploadModal() {
         repoNameInput.setSelectionRange(cursorPosition, cursorPosition);
     }
     return true;
+}
+
+function getGitHubUploadMode() {
+    const selectedMode = document.querySelector('input[name="github-upload-mode"]:checked')?.value;
+    return selectedMode === 'existing' ? 'existing' : 'new';
+}
+
+function setGitHubUploadMode(mode = 'new') {
+    const normalizedMode = mode === 'existing' ? 'existing' : 'new';
+    document.querySelectorAll('.gh-target-mode-option').forEach((option) => {
+        const optionMode = option.dataset.mode === 'existing' ? 'existing' : 'new';
+        const isActive = optionMode === normalizedMode;
+        option.classList.toggle('selected', isActive);
+        const input = option.querySelector('input[type="radio"]');
+        if (input) {
+            input.checked = isActive;
+        }
+    });
+
+    const showNewRepoFields = normalizedMode === 'new';
+    ['gh-new-repo-name-field', 'gh-new-repo-description-field', 'gh-new-repo-visibility-field', 'gh-new-repo-options']
+        .forEach((elementId) => {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.style.display = showNewRepoFields ? '' : 'none';
+            }
+        });
+
+    ['gh-existing-repo-field', 'gh-existing-options-field'].forEach((elementId) => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.style.display = showNewRepoFields ? 'none' : '';
+        }
+    });
+
+    const subtitleEl = document.querySelector('#github-upload-modal .np-subtitle');
+    if (subtitleEl) {
+        subtitleEl.textContent = showNewRepoFields
+            ? 'Create a new repository and upload selected files'
+            : 'Safely update an existing GitHub repository with selected files';
+    }
+
+    const confirmBtn = document.getElementById('confirm-github-upload-btn');
+    if (confirmBtn) {
+        confirmBtn.innerHTML = showNewRepoFields
+            ? '<i class="fab fa-github"></i> Create & Upload'
+            : '<i class="fab fa-github"></i> Upload to Existing Repo';
+    }
+
+    const progressOverlay = document.getElementById('gh-upload-progress');
+    if (progressOverlay) {
+        progressOverlay.dataset.uploadMode = normalizedMode;
+    }
+
+    updateGitHubExistingSafetyNote();
+    updateGitHubUploadSubmitState();
+}
+
+function updateGitHubExistingSafetyNote() {
+    const noteEl = document.getElementById('github-existing-safety-note');
+    if (!noteEl) {
+        return;
+    }
+
+    const forcePushEnabled = Boolean(document.getElementById('github-existing-force-push')?.checked);
+    if (forcePushEnabled) {
+        noteEl.classList.add('warning');
+        noteEl.textContent = 'Force push is enabled: remote history on the target branch will be replaced.';
+        return;
+    }
+
+    noteEl.classList.remove('warning');
+    noteEl.textContent = 'Recommended: keep force push disabled to preserve repository history.';
+}
+
+function deriveGitHubRepoTargetFromRemoteOutput(output) {
+    const lines = String(output || '')
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+    if (lines.length === 0) {
+        return '';
+    }
+
+    const parseRemoteUrl = (value) => {
+        const text = String(value || '').trim();
+        if (!text) {
+            return '';
+        }
+
+        let match = text.match(/^git@github\.com:([^/\s]+)\/([^/\s]+?)(?:\.git)?$/i);
+        if (match) {
+            return `${match[1]}/${match[2]}`;
+        }
+
+        match = text.match(/^https?:\/\/github\.com\/([^/\s]+)\/([^/\s]+?)(?:\.git)?$/i);
+        if (match) {
+            return `${match[1]}/${match[2]}`;
+        }
+
+        return '';
+    };
+
+    let fallback = '';
+    for (const line of lines) {
+        const parts = line.split(/\s+/);
+        if (parts.length < 2) {
+            continue;
+        }
+
+        const remoteName = parts[0];
+        const remoteUrl = parts[1];
+        const parsedTarget = parseRemoteUrl(remoteUrl);
+        if (!parsedTarget) {
+            continue;
+        }
+
+        if (remoteName === 'origin') {
+            return parsedTarget;
+        }
+        if (!fallback) {
+            fallback = parsedTarget;
+        }
+    }
+
+    return fallback;
+}
+
+async function prefillGitHubExistingRepoTarget() {
+    if (!currentProject?.path) {
+        return;
+    }
+
+    const existingRepoInput = document.getElementById('github-existing-repo-target');
+    if (!existingRepoInput || existingRepoInput.value.trim()) {
+        return;
+    }
+
+    try {
+        const remoteResult = await ipcRenderer.invoke('git-remote-list', currentProject.path);
+        if (!remoteResult?.success) {
+            return;
+        }
+
+        const detectedTarget = deriveGitHubRepoTargetFromRemoteOutput(remoteResult.output || '');
+        if (!detectedTarget) {
+            return;
+        }
+
+        existingRepoInput.value = detectedTarget;
+        updateGitHubExistingRepoHint();
+        updateGitHubUploadSubmitState();
+    } catch {
+        // Ignore remote discovery errors and keep manual input flow.
+    }
+}
+
+function validateGitHubExistingRepoTargetInput(rawValue) {
+    const sourceValue = typeof rawValue === 'string' ? rawValue.trim() : '';
+    if (!sourceValue) {
+        return {
+            valid: false,
+            normalized: '',
+            owner: '',
+            repo: '',
+            message: 'Repository target is required.'
+        };
+    }
+
+    let candidatePath = sourceValue;
+    if (/^https?:\/\//i.test(candidatePath)) {
+        try {
+            const parsed = new URL(candidatePath);
+            if (!/^(?:www\.)?github\.com$/i.test(parsed.hostname)) {
+                return {
+                    valid: false,
+                    normalized: sourceValue,
+                    owner: '',
+                    repo: '',
+                    message: 'Only github.com repositories are supported.'
+                };
+            }
+            candidatePath = parsed.pathname || '';
+        } catch {
+            return {
+                valid: false,
+                normalized: sourceValue,
+                owner: '',
+                repo: '',
+                message: 'Repository URL is invalid.'
+            };
+        }
+    } else if (/^ssh:\/\/git@github\.com\//i.test(candidatePath)) {
+        candidatePath = candidatePath.replace(/^ssh:\/\/git@github\.com\//i, '');
+    } else if (/^git@github\.com:/i.test(candidatePath)) {
+        candidatePath = candidatePath.replace(/^git@github\.com:/i, '');
+    }
+
+    candidatePath = candidatePath
+        .split(/[?#]/, 1)[0]
+        .replace(/\.git$/i, '')
+        .replace(/^\/+/, '')
+        .replace(/\/+$/, '');
+
+    const segments = candidatePath.split('/').filter(Boolean);
+    if (segments.length !== 2) {
+        return {
+            valid: false,
+            normalized: sourceValue,
+            owner: '',
+            repo: '',
+            message: 'Use owner/repository format or a GitHub repository URL.'
+        };
+    }
+
+    const [owner, repo] = segments;
+    if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(owner)) {
+        return {
+            valid: false,
+            normalized: sourceValue,
+            owner: '',
+            repo: '',
+            message: 'Repository owner is invalid.'
+        };
+    }
+
+    if (!/^[A-Za-z0-9._-]{1,100}$/.test(repo) || repo.startsWith('.') || repo.endsWith('.')) {
+        return {
+            valid: false,
+            normalized: sourceValue,
+            owner: '',
+            repo: '',
+            message: 'Repository name is invalid.'
+        };
+    }
+
+    return {
+        valid: true,
+        normalized: `${owner}/${repo}`,
+        owner,
+        repo,
+        message: 'Repository target looks good.'
+    };
+}
+
+function updateGitHubExistingRepoHint(validation, options = {}) {
+    const { forceError = false } = options;
+    const inputEl = document.getElementById('github-existing-repo-target');
+    const hintEl = document.getElementById('github-existing-repo-hint');
+    const resolvedValidation = validation || validateGitHubExistingRepoTargetInput(inputEl?.value || '');
+
+    if (inputEl) {
+        inputEl.classList.remove('gh-repo-valid', 'gh-repo-invalid');
+    }
+
+    let hintState = 'neutral';
+    let hintText = 'Use owner/repository or full GitHub URL.';
+    const hasInput = Boolean(inputEl?.value.trim());
+
+    if (resolvedValidation.valid) {
+        hintState = 'valid';
+        hintText = resolvedValidation.message;
+        inputEl?.classList.add('gh-repo-valid');
+    } else if (hasInput || forceError) {
+        hintState = 'invalid';
+        hintText = resolvedValidation.message || 'Repository target is invalid.';
+        inputEl?.classList.add('gh-repo-invalid');
+    }
+
+    if (hintEl) {
+        hintEl.textContent = hintText;
+        hintEl.dataset.state = hintState;
+    }
+
+    return resolvedValidation;
 }
 
 function suggestGitHubRepoName(rawName) {
@@ -1551,15 +1897,23 @@ function updateGitHubRepoNameHint(validation, options = {}) {
     return resolvedValidation;
 }
 
-function getGitHubUploadSubmitReadiness(repoValidation) {
-    const validation = repoValidation || validateGitHubRepoNameInput(document.getElementById('github-repo-name')?.value || '');
+function getGitHubUploadSubmitReadiness(modeValidation) {
+    const mode = getGitHubUploadMode();
+    const validation = mode === 'new'
+        ? (modeValidation || validateGitHubRepoNameInput(document.getElementById('github-repo-name')?.value || ''))
+        : null;
+    const existingValidation = mode === 'existing'
+        ? (modeValidation || validateGitHubExistingRepoTargetInput(document.getElementById('github-existing-repo-target')?.value || ''))
+        : null;
     const selectedPathCount = collectGitHubUploadPathspecs().length;
 
     if (githubUploadInProgress) {
         return {
             canSubmit: false,
             reason: 'Upload is currently in progress.',
+            mode,
             validation,
+            existingValidation,
             selectedPathCount
         };
     }
@@ -1568,7 +1922,9 @@ function getGitHubUploadSubmitReadiness(repoValidation) {
         return {
             canSubmit: false,
             reason: 'Scanning project files...',
+            mode,
             validation,
+            existingValidation,
             selectedPathCount
         };
     }
@@ -1577,16 +1933,31 @@ function getGitHubUploadSubmitReadiness(repoValidation) {
         return {
             canSubmit: false,
             reason: 'No project selected.',
+            mode,
             validation,
+            existingValidation,
             selectedPathCount
         };
     }
 
-    if (!validation.valid) {
+    if (mode === 'new' && (!validation || !validation.valid)) {
         return {
             canSubmit: false,
-            reason: validation.message || 'Repository name is invalid.',
+            reason: validation?.message || 'Repository name is invalid.',
+            mode,
             validation,
+            existingValidation,
+            selectedPathCount
+        };
+    }
+
+    if (mode === 'existing' && (!existingValidation || !existingValidation.valid)) {
+        return {
+            canSubmit: false,
+            reason: existingValidation?.message || 'Repository target is invalid.',
+            mode,
+            validation,
+            existingValidation,
             selectedPathCount
         };
     }
@@ -1595,7 +1966,9 @@ function getGitHubUploadSubmitReadiness(repoValidation) {
         return {
             canSubmit: false,
             reason: 'Select at least one file or folder to upload.',
+            mode,
             validation,
+            existingValidation,
             selectedPathCount
         };
     }
@@ -1603,7 +1976,9 @@ function getGitHubUploadSubmitReadiness(repoValidation) {
     return {
         canSubmit: true,
         reason: '',
+        mode,
         validation,
+        existingValidation,
         selectedPathCount
     };
 }
@@ -1614,10 +1989,15 @@ function updateGitHubUploadSubmitState() {
         return;
     }
 
-    const validation = updateGitHubRepoNameHint();
+    const mode = getGitHubUploadMode();
+    const validation = mode === 'new'
+        ? updateGitHubRepoNameHint()
+        : updateGitHubExistingRepoHint();
     const readiness = getGitHubUploadSubmitReadiness(validation);
     confirmBtn.disabled = !readiness.canSubmit;
     confirmBtn.title = readiness.canSubmit
-        ? 'Create repository and upload selected files'
+        ? (readiness.mode === 'existing'
+            ? 'Upload selected files to existing repository'
+            : 'Create repository and upload selected files')
         : (readiness.reason || 'Complete all required fields to continue');
 }
