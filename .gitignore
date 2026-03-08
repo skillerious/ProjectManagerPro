@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.log
+npm-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+tmp/
+tmp_write_test.txt
+coverage/
+.nyc_output/

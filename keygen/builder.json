@@ -1,0 +1,32 @@
+{
+  "appId": "com.projectmanager.keygen",
+  "productName": "Project Manager Keygen",
+  "directories": {
+    "output": "dist/keygen"
+  },
+  "files": [
+    "keygen/**/*",
+    "license-utils.js"
+  ],
+  "extraResources": [
+    {
+      "from": "assets/keygen.png",
+      "to": "assets/keygen.png"
+    },
+    {
+      "from": "assets/keygen.ico",
+      "to": "assets/keygen.ico"
+    }
+  ],
+  "extraMetadata": {
+    "main": "keygen/main.js"
+  },
+  "win": {
+    "target": "nsis",
+    "icon": "assets/keygen.ico"
+  },
+  "nsis": {
+    "oneClick": true,
+    "perMachine": false
+  }
+}
