@@ -176,3 +176,26 @@ test('workspace search query cache returns immutable payloads with hasMore flag'
   assert.equal(secondQuery.results.length, 1);
   assert.notEqual(secondQuery.results[0].label, 'mutated-result');
 });
+
+test('workspace search hasMore stays false when matches exactly meet limit', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'appmanager-ws-hasmore-exact-'));
+  const userData = path.join(root, 'userdata');
+  const workspace = path.join(root, 'workspace');
+  const projectPath = path.join(workspace, 'exact-limit-project');
+  await fs.mkdir(projectPath, { recursive: true });
+  await fs.writeFile(path.join(projectPath, 'only-match.txt'), 'unique-token', 'utf8');
+  await fs.writeFile(path.join(projectPath, 'other-file.txt'), 'something else', 'utf8');
+
+  const services = new WorkspaceServices({
+    app: { getPath: () => userData },
+    logger: null
+  });
+
+  const buildResult = await services.buildSearchIndex({ workspacePath: workspace });
+  assert.equal(buildResult.success, true);
+
+  const query = services.querySearchIndex('only-match', 1);
+  assert.equal(query.success, true);
+  assert.equal(query.results.length, 1);
+  assert.equal(query.hasMore, false);
+});

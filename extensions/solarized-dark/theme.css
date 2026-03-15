@@ -1,0 +1,47 @@
+/* ============================================
+   Solarized Dark
+   Precision colors for machines and people
+   Author: Ethan Schoonover
+   ============================================ */
+
+:root {
+  --bg-primary: #002b36;
+  --bg-secondary: #001e27;
+  --bg-tertiary: #073642;
+  --bg-hover: #0a4050;
+  --text-primary: #839496;
+  --text-secondary: #586e75;
+  --text-highlight: #fdf6e3;
+  --accent-primary: #268bd2;
+  --accent-secondary: #2aa198;
+  --accent-hover: #1a7abc;
+  --border-color: #0d4654;
+  --success: #859900;
+  --warning: #b58900;
+  --error: #dc322f;
+  --info: #2aa198;
+}
+
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 16px rgba(38, 139, 210, 0.15);
+}
+
+.btn-primary,
+.ext-btn-primary {
+  background: var(--accent-primary);
+}
+
+.stat-card { background: var(--bg-tertiary); }
+.modal-content { background: var(--bg-secondary); }

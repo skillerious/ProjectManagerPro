@@ -1,0 +1,22 @@
+{
+  "id": "nord-deep",
+  "name": "Nord Deep",
+  "displayName": "Nord Deep",
+  "description": "An arctic, north-bluish color palette inspired by the beauty of the Arctic. Clean polar night backgrounds with aurora-inspired accent colors evoke frost-kissed Nordic landscapes.",
+  "author": "Arctic Ice Studio",
+  "version": "1.6.0",
+  "category": "themes",
+  "type": "themes",
+  "main": "theme.css",
+  "icon": "fa-snowflake",
+  "rating": 4.7,
+  "downloads": 2900000,
+  "tags": ["dark", "blue", "arctic", "nord", "clean"],
+  "colors": ["#2e3440", "#88c0d0", "#81a1c1", "#a3be8c", "#ebcb8b", "#bf616a"],
+  "preview": {
+    "background": "#2e3440",
+    "accent": "#88c0d0",
+    "secondary": "#81a1c1",
+    "palette": ["#2e3440", "#88c0d0", "#81a1c1", "#a3be8c", "#ebcb8b", "#bf616a"]
+  }
+}

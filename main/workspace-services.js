@@ -347,6 +347,9 @@ class WorkspaceServices {
       }))
       .map((entry) => path.join(root, entry.name));
 
+    if (directories.length > MAX_DISCOVERED_PROJECTS) {
+      this.logger.warn(`Workspace has ${directories.length} projects, capping at ${MAX_DISCOVERED_PROJECTS}`, { root });
+    }
     return directories.slice(0, MAX_DISCOVERED_PROJECTS);
   }
 
@@ -586,6 +589,11 @@ class WorkspaceServices {
         continue;
       }
 
+      if (matches.length >= normalizedLimit) {
+        hasMore = true;
+        break;
+      }
+
       matches.push({
         type: entry.type,
         label: entry.label,
@@ -593,11 +601,6 @@ class WorkspaceServices {
         filePath: entry.filePath || '',
         hash: entry.hash || ''
       });
-
-      if (matches.length >= normalizedLimit) {
-        hasMore = true;
-        break;
-      }
     }
 
     const result = {

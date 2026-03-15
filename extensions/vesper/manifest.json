@@ -1,0 +1,22 @@
+{
+  "id": "vesper",
+  "name": "Vesper",
+  "displayName": "Vesper",
+  "description": "A sophisticated dark theme with warm amber tones evoking the golden hour before twilight. Ultra-dark backgrounds with carefully curated warm highlights create an intimate, focused workspace.",
+  "author": "Rauno Freiberg",
+  "version": "1.1.0",
+  "category": "themes",
+  "type": "themes",
+  "main": "theme.css",
+  "icon": "fa-star-and-crescent",
+  "rating": 4.8,
+  "downloads": 890000,
+  "tags": ["dark", "warm", "amber", "minimal", "sophisticated"],
+  "colors": ["#101010", "#ffc799", "#d4a37a", "#99ffe4", "#ffca85", "#ff6f6f"],
+  "preview": {
+    "background": "#101010",
+    "accent": "#ffc799",
+    "secondary": "#d4a37a",
+    "palette": ["#101010", "#ffc799", "#d4a37a", "#99ffe4", "#ffca85", "#ff6f6f"]
+  }
+}

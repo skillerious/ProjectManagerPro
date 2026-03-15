@@ -308,9 +308,30 @@ npm run keygen
 ### Activation Keys
 
 > [!TIP]
-> The license/registration component in this repository exists to teach me cryptography and secure-software concepts (key generation, validation, secure storage, integrity checks, and device binding).
-> It is not intended to be a real end-user registration, licensing, or monetization system.
+> The app itself is a project manager, not a learning tool.
+> The license/registration component exists because I was personally exploring cryptography and secure-software concepts (key generation, validation, secure storage, integrity checks, and device binding).
+> It is not intended to be a real end-user registration, commercial licensing, or monetization system.
 > Keys are not sold and should never be sold. All keys below are permanently free for testing and learning.
+
+#### Licensing FAQ
+
+- **Does this app use paid commercial licenses?**
+  No. The product-key flow is included only because this is my personal project and I experimented with that type of system.
+- **Is this app itself a learning/education product?**
+  No. It is a project manager. The key logic is the learning experiment, not the purpose of the app.
+- **What legal license applies to the repository code?**
+  The source code is under the MIT license in [`LICENSE`](LICENSE).
+- **Can sample keys be sold or marketed as subscriptions?**
+  No. Keys in this project are for testing and learning only.
+
+> [!NOTE]
+> MIT governs source-code usage rights (including redistribution terms). The in-app key gate is separate and is included as part of my personal experimentation.
+
+> [!IMPORTANT]
+> If you fork this project, keep licensing communication explicit so users understand the difference between legal repository licensing and technical key-validation features.
+
+> [!WARNING]
+> Never represent the included sample keys as commercial proof of purchase or paid access credentials.
 
 Copy directly from the text boxes below.
 

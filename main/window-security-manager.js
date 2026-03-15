@@ -36,8 +36,12 @@ function createWindowSecurityManager({
         return false;
       }
 
-      const filePath = pathModule.resolve(fileURLToPathFn(parsedUrl));
-      return isPathWithinBase(baseDir, filePath);
+      const filePath = fileURLToPathFn(parsedUrl);
+      if (typeof filePath !== 'string' || !filePath) {
+        return false;
+      }
+      const resolvedPath = pathModule.resolve(filePath);
+      return isPathWithinBase(baseDir, resolvedPath);
     } catch {
       return false;
     }
@@ -46,27 +50,10 @@ function createWindowSecurityManager({
   function validateExternalUrl(rawUrl) {
     try {
       const parsedUrl = new UrlClass(rawUrl);
-      const allowedProtocols = new Set(['http:', 'https:', 'file:']);
+      const allowedProtocols = new Set(['http:', 'https:']);
 
       if (!allowedProtocols.has(parsedUrl.protocol)) {
         return { valid: false, error: 'Unsupported URL protocol', protocol: parsedUrl.protocol };
-      }
-
-      if (parsedUrl.protocol === 'file:') {
-        if (parsedUrl.host && parsedUrl.host !== 'localhost') {
-          return { valid: false, error: 'Invalid file URL host' };
-        }
-
-        let filePath;
-        try {
-          filePath = pathModule.resolve(fileURLToPathFn(parsedUrl));
-        } catch {
-          return { valid: false, error: 'Invalid file URL' };
-        }
-
-        if (filePath === pathModule.parse(filePath).root) {
-          return { valid: false, error: 'Refusing to open filesystem root' };
-        }
       }
 
       return { valid: true, url: parsedUrl.toString() };

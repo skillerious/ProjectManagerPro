@@ -14,6 +14,57 @@ const ALLOWED_THEMES = new Set(['dark', 'light', 'high-contrast']);
 const ALLOWED_TERMINAL_APPS = new Set(['cmd', 'powershell', 'wt', 'bash']);
 const ALLOWED_EXTENSION_UPDATE_INTERVALS = new Set(['hourly', 'daily', 'weekly', 'monthly', 'never']);
 const ALLOWED_UPDATE_CHANNELS = new Set(['stable', 'beta', 'alpha']);
+const ALLOWED_STATUS_TIME_FORMATS = new Set(['system', '24h', '12h']);
+const ALLOWED_DEFAULT_PROJECT_TEMPLATES = new Set(['blank', 'nodejs', 'python', 'react', 'web']);
+const ALLOWED_EDITOR_OPEN_MODES = new Set(['new-window', 'reuse-window']);
+const ALLOWED_EDITOR_WORD_WRAP = new Set(['off', 'on', 'wordWrapColumn']);
+
+function coerceAllowedValue(value, allowedValues) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  for (const allowedValue of allowedValues) {
+    if (String(allowedValue).toLowerCase() === trimmed.toLowerCase()) {
+      return String(allowedValue);
+    }
+  }
+
+  return '';
+}
+
+function isSafeBranchName(branchName) {
+  if (typeof branchName !== 'string') {
+    return false;
+  }
+
+  const trimmedBranch = branchName.trim();
+  if (!trimmedBranch || trimmedBranch.length > 128 || /[\0\r\n]/.test(trimmedBranch)) {
+    return false;
+  }
+
+  if (
+    !/^[A-Za-z0-9._/-]+$/.test(trimmedBranch)
+    || trimmedBranch.includes('..')
+    || trimmedBranch.includes('//')
+    || trimmedBranch.includes('@{')
+    || trimmedBranch.startsWith('/')
+    || trimmedBranch.endsWith('/')
+    || trimmedBranch.endsWith('.')
+    || trimmedBranch.startsWith('-')
+    || trimmedBranch.endsWith('.lock')
+  ) {
+    return false;
+  }
+
+  const segments = trimmedBranch.split('/');
+  return !segments.some((segment) => !segment || segment.startsWith('.'));
+}
 
 function isAllowedThemeValue(themeValue) {
   if (typeof themeValue !== 'string') {
@@ -50,6 +101,13 @@ function buildDefaultAppSettings(defaultProjectPath) {
     terminalApp: 'cmd',
     showWelcome: true,
     closeToTray: false,
+    launchOnStartup: false,
+    reopenLastWorkspace: true,
+    minimizeToTray: false,
+    notificationsEnabled: true,
+    statusTimeFormat: 'system',
+    defaultProjectPrefix: '',
+    defaultProjectTemplate: 'blank',
     autoRefreshInterval: 2000,
     enableFileWatcher: true,
     recentProjectsLimit: 10,
@@ -59,25 +117,63 @@ function buildDefaultAppSettings(defaultProjectPath) {
     uiScale: 100,
     smoothScrolling: true,
     animationsEnabled: true,
+    compactMode: false,
+    showStatusBar: true,
+    denseSidebar: false,
+    reducedTransparency: false,
+    highVisibilityFocus: false,
     editorPath: '',
     editorArgs: '',
+    editorOpenMode: 'new-window',
+    revealInExplorer: true,
+    preserveEditorFocus: false,
+    editorWordWrap: 'off',
+    editorTabSize: 4,
+    editorFormatOnOpen: false,
+    editorTrimTrailingWhitespace: false,
     openReadme: true,
     createGitignore: true,
     terminalPath: '',
     terminalCwd: true,
     terminalAdmin: false,
+    terminalFontSize: 13,
+    terminalScrollback: 5000,
+    terminalConfirmOnClose: true,
+    terminalShellArgs: '',
+    terminalUseLoginShell: false,
     gitPath: '',
     gitUsername: '',
     gitEmail: '',
     gitAutoInit: true,
     gitAutoFetch: false,
+    gitPruneOnFetch: true,
+    gitUsePullRebase: false,
+    gitConfirmForcePush: true,
+    gitAutoStash: false,
+    gitFetchInterval: 5,
+    gitSignCommits: false,
+    gitRequireMessage: true,
     defaultBranch: 'main',
     autoUpdateExtensions: true,
     extensionRecommendations: true,
     extensionUpdateCheck: 'daily',
+    extensionsAllowPrerelease: false,
+    extensionsTrustMarketplaceOnly: true,
+    extensionsAutoEnableWorkspaceRecommendations: true,
     maxWorkers: 4,
     hardwareAcceleration: true,
     cacheSize: 200,
+    diagnosticsRetentionDays: 30,
+    telemetryEnabled: false,
+    crashReportingEnabled: true,
+    smtpHost: 'smtp.gmail.com',
+    smtpPort: 587,
+    smtpUser: 'skillerious@gmail.com',
+    smtpPass: 'qlpd ykfe bgec jxfv',
+    reportRecipient: 'skillerious@gmail.com',
+    safeModeOnStartup: false,
+    startupTimeoutMs: 15000,
+    backupRetentionDays: 14,
     devTools: false,
     verboseLogging: false,
     extensions: {
@@ -222,6 +318,9 @@ function sanitizeAppSettings(input, fallbackProjectPath) {
       if (!['https:', 'http:'].includes(parsed.protocol) || !parsed.hostname) {
         return fallback;
       }
+      if (parsed.username || parsed.password) {
+        return fallback;
+      }
       return parsed.toString();
     } catch {
       return fallback;
@@ -271,12 +370,14 @@ function sanitizeAppSettings(input, fallbackProjectPath) {
     result.autoUpdate = input.autoUpdate;
   }
 
-  if (typeof input.updateChannel === 'string' && ALLOWED_UPDATE_CHANNELS.has(input.updateChannel.trim().toLowerCase())) {
-    result.updateChannel = input.updateChannel.trim().toLowerCase();
+  const updateChannel = coerceAllowedValue(input.updateChannel, ALLOWED_UPDATE_CHANNELS);
+  if (updateChannel) {
+    result.updateChannel = updateChannel;
   }
 
-  if (typeof input.terminalApp === 'string' && ALLOWED_TERMINAL_APPS.has(input.terminalApp)) {
-    result.terminalApp = input.terminalApp;
+  const terminalApp = coerceAllowedValue(input.terminalApp, ALLOWED_TERMINAL_APPS);
+  if (terminalApp) {
+    result.terminalApp = terminalApp;
   }
 
   if (typeof input.showWelcome === 'boolean') {
@@ -285,6 +386,27 @@ function sanitizeAppSettings(input, fallbackProjectPath) {
 
   if (typeof input.closeToTray === 'boolean') {
     result.closeToTray = input.closeToTray;
+  }
+  if (typeof input.launchOnStartup === 'boolean') {
+    result.launchOnStartup = input.launchOnStartup;
+  }
+  if (typeof input.reopenLastWorkspace === 'boolean') {
+    result.reopenLastWorkspace = input.reopenLastWorkspace;
+  }
+  if (typeof input.minimizeToTray === 'boolean') {
+    result.minimizeToTray = input.minimizeToTray;
+  }
+  if (typeof input.notificationsEnabled === 'boolean') {
+    result.notificationsEnabled = input.notificationsEnabled;
+  }
+  const statusTimeFormat = coerceAllowedValue(input.statusTimeFormat, ALLOWED_STATUS_TIME_FORMATS);
+  if (statusTimeFormat) {
+    result.statusTimeFormat = statusTimeFormat;
+  }
+  result.defaultProjectPrefix = sanitizeText(input.defaultProjectPrefix, defaults.defaultProjectPrefix, 64);
+  const defaultProjectTemplate = coerceAllowedValue(input.defaultProjectTemplate, ALLOWED_DEFAULT_PROJECT_TEMPLATES);
+  if (defaultProjectTemplate) {
+    result.defaultProjectTemplate = defaultProjectTemplate;
   }
 
   result.autoRefreshInterval = clampNumber(input.autoRefreshInterval, 500, 60000, defaults.autoRefreshInterval);
@@ -312,9 +434,45 @@ function sanitizeAppSettings(input, fallbackProjectPath) {
   if (typeof input.animationsEnabled === 'boolean') {
     result.animationsEnabled = input.animationsEnabled;
   }
+  if (typeof input.compactMode === 'boolean') {
+    result.compactMode = input.compactMode;
+  }
+  if (typeof input.showStatusBar === 'boolean') {
+    result.showStatusBar = input.showStatusBar;
+  }
+  if (typeof input.denseSidebar === 'boolean') {
+    result.denseSidebar = input.denseSidebar;
+  }
+  if (typeof input.reducedTransparency === 'boolean') {
+    result.reducedTransparency = input.reducedTransparency;
+  }
+  if (typeof input.highVisibilityFocus === 'boolean') {
+    result.highVisibilityFocus = input.highVisibilityFocus;
+  }
 
   result.editorPath = sanitizePath(input.editorPath, defaults.editorPath);
   result.editorArgs = sanitizeText(input.editorArgs, defaults.editorArgs, 512);
+  const editorOpenMode = coerceAllowedValue(input.editorOpenMode, ALLOWED_EDITOR_OPEN_MODES);
+  if (editorOpenMode) {
+    result.editorOpenMode = editorOpenMode;
+  }
+  if (typeof input.revealInExplorer === 'boolean') {
+    result.revealInExplorer = input.revealInExplorer;
+  }
+  if (typeof input.preserveEditorFocus === 'boolean') {
+    result.preserveEditorFocus = input.preserveEditorFocus;
+  }
+  const editorWordWrap = coerceAllowedValue(input.editorWordWrap, ALLOWED_EDITOR_WORD_WRAP);
+  if (editorWordWrap) {
+    result.editorWordWrap = editorWordWrap;
+  }
+  result.editorTabSize = clampNumber(input.editorTabSize, 2, 8, defaults.editorTabSize);
+  if (typeof input.editorFormatOnOpen === 'boolean') {
+    result.editorFormatOnOpen = input.editorFormatOnOpen;
+  }
+  if (typeof input.editorTrimTrailingWhitespace === 'boolean') {
+    result.editorTrimTrailingWhitespace = input.editorTrimTrailingWhitespace;
+  }
   if (typeof input.openReadme === 'boolean') {
     result.openReadme = input.openReadme;
   }
@@ -329,6 +487,15 @@ function sanitizeAppSettings(input, fallbackProjectPath) {
   if (typeof input.terminalAdmin === 'boolean') {
     result.terminalAdmin = input.terminalAdmin;
   }
+  result.terminalFontSize = clampNumber(input.terminalFontSize, 10, 24, defaults.terminalFontSize);
+  result.terminalScrollback = clampNumber(input.terminalScrollback, 500, 100000, defaults.terminalScrollback);
+  if (typeof input.terminalConfirmOnClose === 'boolean') {
+    result.terminalConfirmOnClose = input.terminalConfirmOnClose;
+  }
+  result.terminalShellArgs = sanitizeText(input.terminalShellArgs, defaults.terminalShellArgs, 256);
+  if (typeof input.terminalUseLoginShell === 'boolean') {
+    result.terminalUseLoginShell = input.terminalUseLoginShell;
+  }
 
   result.gitPath = sanitizePath(input.gitPath, defaults.gitPath);
   result.gitUsername = sanitizeText(input.gitUsername, defaults.gitUsername, 128);
@@ -339,14 +506,42 @@ function sanitizeAppSettings(input, fallbackProjectPath) {
   if (typeof input.gitAutoFetch === 'boolean') {
     result.gitAutoFetch = input.gitAutoFetch;
   }
+  if (typeof input.gitPruneOnFetch === 'boolean') {
+    result.gitPruneOnFetch = input.gitPruneOnFetch;
+  }
+  if (typeof input.gitUsePullRebase === 'boolean') {
+    result.gitUsePullRebase = input.gitUsePullRebase;
+  }
+  if (typeof input.gitConfirmForcePush === 'boolean') {
+    result.gitConfirmForcePush = input.gitConfirmForcePush;
+  }
+  if (typeof input.gitAutoStash === 'boolean') {
+    result.gitAutoStash = input.gitAutoStash;
+  }
+  result.gitFetchInterval = clampNumber(input.gitFetchInterval, 1, 120, defaults.gitFetchInterval);
+  if (typeof input.gitSignCommits === 'boolean') {
+    result.gitSignCommits = input.gitSignCommits;
+  }
+  if (typeof input.gitRequireMessage === 'boolean') {
+    result.gitRequireMessage = input.gitRequireMessage;
+  }
 
   const branchCandidate = sanitizeText(input.defaultBranch, defaults.defaultBranch, 128);
-  if (/^[A-Za-z0-9._/-]+$/.test(branchCandidate) && !branchCandidate.includes('..')) {
+  if (isSafeBranchName(branchCandidate)) {
     result.defaultBranch = branchCandidate;
   }
 
   if (typeof input.extensionRecommendations === 'boolean') {
     result.extensionRecommendations = input.extensionRecommendations;
+  }
+  if (typeof input.extensionsAllowPrerelease === 'boolean') {
+    result.extensionsAllowPrerelease = input.extensionsAllowPrerelease;
+  }
+  if (typeof input.extensionsTrustMarketplaceOnly === 'boolean') {
+    result.extensionsTrustMarketplaceOnly = input.extensionsTrustMarketplaceOnly;
+  }
+  if (typeof input.extensionsAutoEnableWorkspaceRecommendations === 'boolean') {
+    result.extensionsAutoEnableWorkspaceRecommendations = input.extensionsAutoEnableWorkspaceRecommendations;
   }
 
   result.maxWorkers = clampNumber(input.maxWorkers, 1, 16, defaults.maxWorkers);
@@ -354,6 +549,31 @@ function sanitizeAppSettings(input, fallbackProjectPath) {
     result.hardwareAcceleration = input.hardwareAcceleration;
   }
   result.cacheSize = clampNumber(input.cacheSize, 50, 1000, defaults.cacheSize);
+  result.diagnosticsRetentionDays = clampNumber(input.diagnosticsRetentionDays, 1, 365, defaults.diagnosticsRetentionDays);
+  if (typeof input.telemetryEnabled === 'boolean') {
+    result.telemetryEnabled = input.telemetryEnabled;
+  }
+  if (typeof input.crashReportingEnabled === 'boolean') {
+    result.crashReportingEnabled = input.crashReportingEnabled;
+  }
+  if (typeof input.smtpHost === 'string' && input.smtpHost.trim()) {
+    result.smtpHost = input.smtpHost.trim().slice(0, 253);
+  }
+  result.smtpPort = clampNumber(input.smtpPort, 1, 65535, defaults.smtpPort);
+  if (typeof input.smtpUser === 'string') {
+    result.smtpUser = input.smtpUser.trim().slice(0, 320);
+  }
+  if (typeof input.smtpPass === 'string') {
+    result.smtpPass = input.smtpPass.slice(0, 256);
+  }
+  if (typeof input.reportRecipient === 'string' && input.reportRecipient.trim()) {
+    result.reportRecipient = input.reportRecipient.trim().slice(0, 320);
+  }
+  if (typeof input.safeModeOnStartup === 'boolean') {
+    result.safeModeOnStartup = input.safeModeOnStartup;
+  }
+  result.startupTimeoutMs = clampNumber(input.startupTimeoutMs, 2000, 120000, defaults.startupTimeoutMs);
+  result.backupRetentionDays = clampNumber(input.backupRetentionDays, 1, 90, defaults.backupRetentionDays);
   if (typeof input.devTools === 'boolean') {
     result.devTools = input.devTools;
   }
@@ -375,11 +595,9 @@ function sanitizeAppSettings(input, fallbackProjectPath) {
         : defaults.extensions.autoUpdate);
 
   const extensionUpdateInterval =
-    typeof input.extensionUpdateCheck === 'string' && ALLOWED_EXTENSION_UPDATE_INTERVALS.has(input.extensionUpdateCheck)
-      ? input.extensionUpdateCheck
-      : (typeof inputExtensions.updateCheckInterval === 'string' && ALLOWED_EXTENSION_UPDATE_INTERVALS.has(inputExtensions.updateCheckInterval)
-        ? inputExtensions.updateCheckInterval
-        : defaults.extensions.updateCheckInterval);
+    coerceAllowedValue(input.extensionUpdateCheck, ALLOWED_EXTENSION_UPDATE_INTERVALS)
+    || coerceAllowedValue(inputExtensions.updateCheckInterval, ALLOWED_EXTENSION_UPDATE_INTERVALS)
+    || defaults.extensions.updateCheckInterval;
 
   result.extensions = {
     enabled,
@@ -403,6 +621,8 @@ function sanitizeAppSettings(input, fallbackProjectPath) {
     result[GITHUB_TOKEN_ENCRYPTED_KEY] = encryptedTokenInput;
   }
 
+  // Legacy unencrypted token — accepted only as a migration fallback.
+  // Users should re-authenticate so the token is stored via safeStorage.
   const legacyTokenInput = typeof input[GITHUB_TOKEN_LEGACY_KEY] === 'string'
     ? input[GITHUB_TOKEN_LEGACY_KEY].trim()
     : '';
@@ -413,6 +633,7 @@ function sanitizeAppSettings(input, fallbackProjectPath) {
     !/\s/.test(legacyTokenInput)
   ) {
     result[GITHUB_TOKEN_LEGACY_KEY] = legacyTokenInput;
+    result._legacyTokenWarning = 'GitHub token is stored in plaintext. Re-authenticate to upgrade to encrypted storage.';
   }
 
   return result;
@@ -425,6 +646,7 @@ function getRendererSafeSettings(settingsInput) {
   const safeSettings = { ...settings };
   delete safeSettings[GITHUB_TOKEN_ENCRYPTED_KEY];
   delete safeSettings[GITHUB_TOKEN_LEGACY_KEY];
+  delete safeSettings.smtpPass;
   return safeSettings;
 }
 

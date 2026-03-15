@@ -1,4 +1,7 @@
 /* Runtime module: core/10-shell-update-queue.js */
+const TEMP_UPDATE_DOWNLOAD_TEST_URL = 'https://ash-speed.hetzner.com/1GB.bin';
+const TEMP_UPDATE_DOWNLOAD_TEST_MODE = true;
+
 function initializeTitlebar() {
     document.getElementById('titlebar-update-btn')?.addEventListener('click', async () => {
         await checkForUpdatesInteractive();
@@ -6,11 +9,15 @@ function initializeTitlebar() {
 
     // Window controls
     document.getElementById('minimize-btn')?.addEventListener('click', () => {
-        ipcRenderer.invoke('minimize-window');
+        ipcRenderer.invoke('minimize-window').catch((err) => {
+            console.warn('Window minimize failed:', err?.message);
+        });
     });
 
     document.getElementById('maximize-btn')?.addEventListener('click', () => {
-        ipcRenderer.invoke('maximize-window');
+        ipcRenderer.invoke('maximize-window').catch((err) => {
+            console.warn('Window maximize failed:', err?.message);
+        });
     });
 
     document.getElementById('close-btn')?.addEventListener('click', async () => {
@@ -193,6 +200,7 @@ function initializeRendererFaultReporting() {
 
     window.addEventListener('unhandledrejection', (event) => {
         const normalized = buildRendererFaultReason(event?.reason);
+        console.error('[UnhandledRejection]', normalized.message, normalized.stack || '');
         const payload = {
             eventType: 'unhandledrejection',
             severity: 'error',
@@ -240,10 +248,14 @@ function initializeMenuItems() {
             const shouldOpenInVSCode = normalizeSettings(appSettings).openInVSCode;
             if (shouldOpenInVSCode) {
                 showNotification('Opening project in VS Code...', 'info');
-                ipcRenderer.invoke('open-in-vscode', selectedPath);
+                ipcRenderer.invoke('open-in-vscode', selectedPath).catch(() => {
+                    showNotification('Failed to open in VS Code', 'error');
+                });
             } else {
                 showNotification('Project selected (auto-open in VS Code is disabled)', 'info');
-                ipcRenderer.invoke('open-in-explorer', selectedPath);
+                ipcRenderer.invoke('open-in-explorer', selectedPath).catch(() => {
+                    showNotification('Failed to open in explorer', 'error');
+                });
             }
         }
     });
@@ -553,7 +565,7 @@ function initializeMenuItems() {
     });
 
     document.getElementById('report-issue-menu')?.addEventListener('click', () => {
-        openConfiguredExternalLink('issues', '', 'Opening issue tracker...');
+        openReportSmartDialog();
     });
 
     document.getElementById('register-product-menu')?.addEventListener('click', () => {
@@ -579,6 +591,9 @@ function updateUpdateState(nextState) {
 
     reconcileMutedUpdateReminderState();
     syncTitlebarUpdateControl();
+    if (typeof scheduleStatusBarRefresh === 'function') {
+        scheduleStatusBarRefresh();
+    }
 }
 
 function getResolvedReleasePageUrl() {
@@ -700,11 +715,26 @@ async function loadUpdateState() {
 async function showAvailableUpdatePrompt({ source = 'manual' } = {}) {
     const latestVersion = updateState.latestVersion || 'latest release';
     const releasePageUrl = getResolvedReleasePageUrl();
+    const useTestDownloadMode = TEMP_UPDATE_DOWNLOAD_TEST_MODE === true;
     const startupDetail = source === 'startup'
         ? 'A newer release tag was detected from GitHub. Review the release notes to continue.'
         : 'Review release notes and start the download when ready.';
+    const downloadDetail = useTestDownloadMode
+        ? `${startupDetail} Temporary test mode is enabled and will download a 1GB test file instead of an installer package.`
+        : startupDetail;
 
     if (!updateState.supported) {
+        const manualActions = useTestDownloadMode
+            ? [
+                { label: 'Run Download Test', value: 'download-test', variant: 'primary', icon: 'fa-cloud-arrow-down' },
+                { label: 'Open Releases Page', value: 'open-release', variant: 'secondary', icon: 'fa-up-right-from-square' },
+                { label: 'Remind Me Later', value: 'remind-later', variant: 'secondary', icon: 'fa-bell-slash' }
+            ]
+            : [
+                { label: 'Open Releases Page', value: 'open-release', variant: 'primary', icon: 'fa-up-right-from-square' },
+                { label: 'Remind Me Later', value: 'remind-later', variant: 'secondary', icon: 'fa-bell-slash' }
+            ];
+
         const manualDecision = await showUpdateSmartDialog({
             mode: 'info',
             context: source === 'startup' ? 'available-manual-startup' : 'available-manual',
@@ -712,18 +742,19 @@ async function showAvailableUpdatePrompt({ source = 'manual' } = {}) {
             subtitle: source === 'startup'
                 ? 'A new release was detected automatically.'
                 : 'A new release is available for manual installation.',
-            detail: 'This build cannot download updates automatically. Open the releases page to download the installer package.',
+            detail: useTestDownloadMode
+                ? 'Automatic updater is unavailable in this build, but you can run the temporary 1GB test download to validate progress handling.'
+                : 'This build cannot download updates automatically. Open the releases page to download the installer package.',
             version: latestVersion,
             channel: updateState.channel,
             checkedAt: updateState.lastCheckedAt || new Date().toISOString(),
             notes: updateState.releaseNotes,
-            actions: [
-                { label: 'Open Releases Page', value: 'open-release', variant: 'primary', icon: 'fa-up-right-from-square' },
-                { label: 'Remind Me Later', value: 'remind-later', variant: 'secondary', icon: 'fa-bell-slash' }
-            ]
+            actions: manualActions
         });
 
-        if (manualDecision === 'open-release') {
+        if (manualDecision === 'download-test') {
+            await downloadUpdateInteractive({ testMode: true });
+        } else if (manualDecision === 'open-release') {
             const openResult = await ipcRenderer.invoke('open-external', releasePageUrl);
             if (openResult?.success) {
                 showNotification('Opened releases page in your browser.', 'success');
@@ -746,18 +777,23 @@ async function showAvailableUpdatePrompt({ source = 'manual' } = {}) {
         subtitle: source === 'startup'
             ? 'A new release was detected automatically.'
             : 'A new release is ready to download.',
-        detail: startupDetail,
+        detail: downloadDetail,
         version: latestVersion,
         channel: updateState.channel,
         checkedAt: updateState.lastCheckedAt || new Date().toISOString(),
         notes: updateState.releaseNotes,
         actions: [
-            { label: 'Download Update', value: 'download', variant: 'primary', icon: 'fa-cloud-arrow-down' },
+            {
+                label: useTestDownloadMode ? 'Run Download Test' : 'Download Update',
+                value: 'download',
+                variant: 'primary',
+                icon: 'fa-cloud-arrow-down'
+            },
             { label: 'Remind Me Later', value: 'remind-later', variant: 'secondary', icon: 'fa-bell-slash' }
         ]
     });
     if (downloadDecision === 'download') {
-        await downloadUpdateInteractive();
+        await downloadUpdateInteractive({ testMode: useTestDownloadMode });
     } else if (downloadDecision === 'remind-later') {
         muteUpdateReminderForCurrentVersion();
         showNotification(`Paused update reminder for ${latestVersion}`, 'info');
@@ -862,6 +898,24 @@ function formatUpdateDialogCheckedAt(value) {
     });
 }
 
+function formatUpdateDialogByteSize(bytesValue) {
+    const bytes = Number(bytesValue);
+    if (!Number.isFinite(bytes) || bytes <= 0) {
+        return '0 B';
+    }
+
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let size = bytes;
+    let unitIndex = 0;
+    while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024;
+        unitIndex += 1;
+    }
+
+    const fractionDigits = unitIndex === 0 ? 0 : (size >= 100 ? 0 : (size >= 10 ? 1 : 2));
+    return `${size.toFixed(fractionDigits)} ${units[unitIndex]}`;
+}
+
 function getUpdateDialogPrimaryVersion(fallback = 'Unknown') {
     const latest = typeof updateState.latestVersion === 'string' ? updateState.latestVersion.trim() : '';
     if (latest) {
@@ -893,7 +947,7 @@ function getDefaultUpdateDialogIconHtml(mode = 'info') {
         case 'danger':
             return '<i class="fas fa-circle-xmark"></i>';
         case 'progress':
-            return '<i class="fas fa-cloud-arrow-down"></i>';
+            return '<span class="update-smart-download-glyph"><i class="fas fa-box"></i><i class="fas fa-arrow-down"></i></span>';
         default:
             return '<i class="fas fa-arrows-rotate"></i>';
     }
@@ -1046,7 +1100,7 @@ function syncUpdateSmartDialogWithState() {
         checkedEl.textContent = formatUpdateDialogCheckedAt(updateState.lastCheckedAt);
     }
 
-    if (context === 'download') {
+    if (context === 'download' || context === 'download-test') {
         if (progressWrapEl) {
             progressWrapEl.hidden = false;
         }
@@ -1061,10 +1115,14 @@ function syncUpdateSmartDialogWithState() {
         if (subtitleEl) {
             subtitleEl.textContent = updateState.downloaded
                 ? 'Download complete. Ready to install.'
-                : 'Securing and verifying the update package.';
+                : (context === 'download-test'
+                    ? 'Downloading a temporary 1GB file to validate update progress.'
+                    : 'Securing and verifying the update package.');
         }
         if (detailEl && updateState.error) {
-            detailEl.textContent = toSafeErrorMessage(updateState.error, 'Update download encountered an error.');
+            detailEl.textContent = context === 'download-test'
+                ? toSafeErrorMessage(updateState.error, 'Test download encountered an error.')
+                : toSafeErrorMessage(updateState.error, 'Update download encountered an error.');
         }
     }
 }
@@ -1842,19 +1900,27 @@ async function checkForUpdatesInteractive() {
             return;
         }
 
-        await showUpdateSmartDialog({
+        const upToDateDecision = await showUpdateSmartDialog({
             mode: 'success',
             context: 'up-to-date',
             title: 'You Are Up to Date',
             subtitle: `Current version ${appVersionInfo.displayVersion || getUpdateDialogPrimaryVersion()} is the latest available.`,
-            detail: 'No new package is available for your selected channel right now.',
+            detail: 'You already have the newest version for this update channel, so there is nothing new to download right now.',
             version: appVersionInfo.displayVersion || getUpdateDialogPrimaryVersion(),
             channel: updateState.channel,
             checkedAt: updateState.lastCheckedAt || checkingStartedAt,
-            actions: [
-                { label: 'Done', value: 'done', variant: 'primary', icon: 'fa-check' }
-            ]
+            actions: TEMP_UPDATE_DOWNLOAD_TEST_MODE
+                ? [
+                    { label: 'Run Download Test', value: 'download-test', variant: 'primary', icon: 'fa-cloud-arrow-down' },
+                    { label: 'Done', value: 'done', variant: 'secondary', icon: 'fa-check' }
+                ]
+                : [
+                    { label: 'Done', value: 'done', variant: 'primary', icon: 'fa-check' }
+                ]
         });
+        if (upToDateDecision === 'download-test') {
+            await downloadUpdateInteractive({ testMode: true });
+        }
     } catch (error) {
         closeUpdateSmartDialog('error');
         await showUpdateSmartDialog({
@@ -1959,7 +2025,7 @@ async function rollbackToStableInteractive() {
                 ]
             });
             if (shouldDownload === 'download') {
-                await downloadUpdateInteractive();
+                await downloadUpdateInteractive({ testMode: TEMP_UPDATE_DOWNLOAD_TEST_MODE });
             }
             return;
         }
@@ -1995,52 +2061,127 @@ async function rollbackToStableInteractive() {
     }
 }
 
-async function downloadUpdateInteractive() {
+async function downloadUpdateInteractive(options = {}) {
+    const useTestMode = options.testMode === true;
     const targetVersion = updateState.latestVersion || 'latest release';
-    showNotification('Downloading update...', 'info');
+    const dialogTitle = useTestMode ? 'Downloading Test Package' : `Downloading ${targetVersion}`;
+    const dialogSubtitle = useTestMode
+        ? 'Downloading a temporary 1GB file to validate update progress.'
+        : 'Securing and verifying the update package.';
+    const dialogDetail = useTestMode
+        ? 'This is a temporary test download and will not install an update.'
+        : 'You can keep working while the package downloads in the background.';
+    const initialProgressLabel = Number.isFinite(updateState.downloadProgress) && updateState.downloadProgress > 0
+        ? `Downloaded ${Math.round(updateState.downloadProgress)}%`
+        : (useTestMode ? 'Preparing test download...' : 'Preparing download...');
 
-    void showUpdateSmartDialog({
+    updateUpdateState({ backgroundDownloadActive: false });
+    showNotification(useTestMode ? 'Starting test download...' : 'Downloading update...', 'info');
+
+    const downloadDialogPromise = showUpdateSmartDialog({
         mode: 'progress',
-        context: 'download',
-        title: `Downloading ${targetVersion}`,
-        subtitle: 'Securing and verifying the update package.',
-        detail: 'You can keep working while the package downloads in the background.',
-        version: targetVersion,
+        context: useTestMode ? 'download-test' : 'download',
+        title: dialogTitle,
+        subtitle: dialogSubtitle,
+        detail: dialogDetail,
+        version: useTestMode ? (appVersionInfo.displayVersion || getUpdateDialogPrimaryVersion()) : targetVersion,
         channel: updateState.channel,
         checkedAt: updateState.lastCheckedAt || new Date().toISOString(),
-        notes: updateState.releaseNotes,
+        notes: useTestMode ? [] : updateState.releaseNotes,
         progress: Number.isFinite(updateState.downloadProgress) ? updateState.downloadProgress : 0,
-        progressLabel: Number.isFinite(updateState.downloadProgress) && updateState.downloadProgress > 0
-            ? `Downloaded ${Math.round(updateState.downloadProgress)}%`
-            : 'Preparing download...',
+        progressLabel: initialProgressLabel,
         dismissible: true,
         dismissOnBackdrop: true,
         actions: [
             { label: 'Run in Background', value: 'background', variant: 'secondary', icon: 'fa-window-minimize' }
         ]
     });
+    void downloadDialogPromise.then((decision) => {
+        if (decision === 'background') {
+            updateUpdateState({ backgroundDownloadActive: true });
+        }
+    }).catch(() => {
+        // Ignore dialog lifecycle exceptions; download state remains source of truth.
+    });
 
     try {
-        const result = await ipcRenderer.invoke('download-update');
+        const result = useTestMode
+            ? await ipcRenderer.invoke('download-test-update', TEMP_UPDATE_DOWNLOAD_TEST_URL)
+            : await ipcRenderer.invoke('download-update');
         updateUpdateState(result?.state || {});
+        updateUpdateState({ backgroundDownloadActive: false, downloadProgress: 0 });
         closeUpdateSmartDialog('download-finished');
         if (!result?.success) {
             const retryDecision = await showUpdateSmartDialog({
                 mode: 'danger',
                 context: 'download-error',
-                title: 'Download Failed',
-                subtitle: 'The update package could not be downloaded.',
+                title: useTestMode ? 'Test Download Failed' : 'Download Failed',
+                subtitle: useTestMode
+                    ? 'The temporary test package could not be downloaded.'
+                    : 'The update package could not be downloaded.',
                 detail: toSafeErrorMessage(result?.error || updateState.error, 'Check your connection and try again.'),
-                version: targetVersion,
+                version: useTestMode ? (appVersionInfo.displayVersion || getUpdateDialogPrimaryVersion()) : targetVersion,
                 channel: updateState.channel,
                 checkedAt: updateState.lastCheckedAt || new Date().toISOString(),
                 actions: [
-                    { label: 'Retry Download', value: 'retry', variant: 'primary', icon: 'fa-rotate' },
+                    {
+                        label: useTestMode ? 'Retry Test Download' : 'Retry Download',
+                        value: 'retry',
+                        variant: 'primary',
+                        icon: 'fa-rotate'
+                    },
                     { label: 'Close', value: 'close', variant: 'secondary', icon: 'fa-times' }
                 ]
             });
             if (retryDecision === 'retry') {
-                await downloadUpdateInteractive();
+                await downloadUpdateInteractive({ testMode: useTestMode });
+            }
+            return;
+        }
+
+        if (useTestMode) {
+            const downloadedBytes = Number(result?.bytesDownloaded);
+            const totalBytes = Number(result?.totalBytes);
+            const downloadedText = formatUpdateDialogByteSize(downloadedBytes);
+            const totalText = Number.isFinite(totalBytes) && totalBytes > 0
+                ? formatUpdateDialogByteSize(totalBytes)
+                : '';
+            const targetPath = typeof result?.downloadPath === 'string' ? result.downloadPath.trim() : '';
+            const downloadFolderPath = targetPath ? dirnamePath(targetPath) : '';
+            const summary = totalText
+                ? `Downloaded ${downloadedText} of ${totalText}.`
+                : `Downloaded ${downloadedText}.`;
+            const pathSummary = targetPath ? ` Saved to ${targetPath}.` : '';
+            const completionActions = downloadFolderPath
+                ? [
+                    { label: 'Open Download Folder', value: 'open-folder', variant: 'primary', icon: 'fa-folder-open' },
+                    { label: 'Done', value: 'done', variant: 'secondary', icon: 'fa-check' }
+                ]
+                : [
+                    { label: 'Done', value: 'done', variant: 'primary', icon: 'fa-check' }
+                ];
+
+            const completionDecision = await showUpdateSmartDialog({
+                mode: 'success',
+                context: 'download-test-complete',
+                title: 'Test Download Complete',
+                subtitle: 'The temporary download flow completed successfully.',
+                detail: `${summary}${pathSummary}`.trim(),
+                version: appVersionInfo.displayVersion || getUpdateDialogPrimaryVersion(),
+                channel: updateState.channel,
+                checkedAt: updateState.lastCheckedAt || new Date().toISOString(),
+                actions: completionActions
+            });
+
+            if (completionDecision === 'open-folder' && downloadFolderPath) {
+                const openResult = await ipcRenderer.invoke('open-in-explorer', downloadFolderPath);
+                if (openResult?.success) {
+                    showNotification('Opened download folder.', 'success');
+                } else {
+                    showNotification(toSafeErrorMessage(openResult?.error, 'Unable to open download folder.'), 'error');
+                }
+            } else {
+                showNotification('Test download complete.', 'success');
             }
             return;
         }
@@ -2067,14 +2208,17 @@ async function downloadUpdateInteractive() {
             showNotification('Update downloaded. Install it from Help > Check for Updates when ready.', 'success');
         }
     } catch (error) {
+        updateUpdateState({ backgroundDownloadActive: false, downloadProgress: 0 });
         closeUpdateSmartDialog('download-error');
         await showUpdateSmartDialog({
             mode: 'danger',
             context: 'download-error',
-            title: 'Download Failed',
-            subtitle: 'An unexpected error interrupted the download.',
+            title: useTestMode ? 'Test Download Failed' : 'Download Failed',
+            subtitle: useTestMode
+                ? 'An unexpected error interrupted the test download.'
+                : 'An unexpected error interrupted the download.',
             detail: toSafeErrorMessage(error?.message, 'Please try again.'),
-            version: targetVersion,
+            version: useTestMode ? (appVersionInfo.displayVersion || getUpdateDialogPrimaryVersion()) : targetVersion,
             channel: updateState.channel,
             checkedAt: new Date().toISOString(),
             actions: [
@@ -2219,6 +2363,9 @@ async function loadOperationQueue() {
         if (result?.success && Array.isArray(result.jobs)) {
             operationQueueJobs = result.jobs;
             renderOperationQueue();
+            if (typeof scheduleStatusBarRefresh === 'function') {
+                scheduleStatusBarRefresh();
+            }
         }
     } catch (error) {
         console.warn('Unable to load operation queue:', error);
@@ -2286,6 +2433,10 @@ function notifyOperationQueueStateChanges() {
             operationQueueFollowups.delete(job.id);
         }
     });
+
+    if (typeof scheduleStatusBarRefresh === 'function') {
+        scheduleStatusBarRefresh();
+    }
 }
 
 function renderOperationQueue() {

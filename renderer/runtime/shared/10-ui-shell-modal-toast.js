@@ -2,6 +2,9 @@
 function toggleSidebar() {
     const sidebar = document.querySelector('.sidebar');
     const contentArea = document.querySelector('.content-area');
+    if (!sidebar || !contentArea) {
+        return;
+    }
     const sidebarWidth = getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width').trim() || '62px';
     
     if (sidebar.style.display === 'none') {
@@ -15,9 +18,18 @@ function toggleSidebar() {
 
 function toggleStatusBar() {
     const statusBar = document.querySelector('.status-bar');
+    if (!statusBar) {
+        return;
+    }
     
     if (statusBar.style.display === 'none') {
         statusBar.style.display = 'flex';
+        if (typeof scheduleStatusBarRefresh === 'function') {
+            scheduleStatusBarRefresh({ immediate: true });
+        }
+        if (typeof updateStatusClockDisplay === 'function') {
+            updateStatusClockDisplay();
+        }
     } else {
         statusBar.style.display = 'none';
     }
@@ -39,7 +51,11 @@ async function saveWorkspace() {
 function showProjectSettings() {
     // Show project-specific settings
     switchView('settings');
-    showNotification(`Settings for ${currentProject.name}`, 'success');
+    if (currentProject?.name) {
+        showNotification(`Settings for ${currentProject.name}`, 'success');
+        return;
+    }
+    showNotification('Opened application settings', 'info');
 }
 
 async function checkVSCodeInstallation() {
@@ -266,4 +282,3 @@ function showNotification(message, type = 'success') {
         notificationTimeout = null;
     }, duration);
 }
-

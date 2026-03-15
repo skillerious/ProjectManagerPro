@@ -1,0 +1,54 @@
+/* ============================================
+   Dracula Pro
+   The iconic dark theme, refined
+   Author: Zeno Rocha
+   ============================================ */
+
+:root {
+  --bg-primary: #282a36;
+  --bg-secondary: #21222c;
+  --bg-tertiary: #343746;
+  --bg-hover: #3e4154;
+  --text-primary: #f8f8f2;
+  --text-secondary: #7e81a1;
+  --text-highlight: #ffffff;
+  --accent-primary: #ff79c6;
+  --accent-secondary: #bd93f9;
+  --accent-hover: #ff5cb5;
+  --border-color: #44475a;
+  --success: #50fa7b;
+  --warning: #f1fa8c;
+  --error: #ff5555;
+  --info: #8be9fd;
+}
+
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(255, 121, 198, 0.18);
+}
+
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

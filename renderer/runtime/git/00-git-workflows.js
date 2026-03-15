@@ -327,7 +327,11 @@ async function showGitSmartInputDialog(options = {}) {
     inputEl.value = options.value || '';
     errorEl.hidden = true;
     errorEl.textContent = '';
-    confirmBtn.innerHTML = `<i class="fas ${options.confirmIcon || 'fa-check'}"></i> ${gitSmartEscape(options.confirmLabel || 'Confirm')}`;
+    confirmBtn.textContent = '';
+    const confirmIcon = document.createElement('i');
+    confirmIcon.className = `fas ${options.confirmIcon || 'fa-check'}`;
+    confirmBtn.appendChild(confirmIcon);
+    confirmBtn.appendChild(document.createTextNode(` ${options.confirmLabel || 'Confirm'}`));
 
     const required = options.required !== false;
     const validate = typeof options.validate === 'function' ? options.validate : null;
@@ -997,6 +1001,17 @@ function initializeGitView() {
             updateGitHubUploadSubmitState();
             return;
         }
+        if (typeof applyGitHubUploadExcludePatterns === 'function') {
+            const exclusionsApplied = applyGitHubUploadExcludePatterns({ silent: true });
+            if (!exclusionsApplied) {
+                showNotification('Fix exclusion patterns before uploading', 'error');
+                document.getElementById('gh-upload-exclude-patterns')?.focus();
+                return;
+            }
+        }
+        const excludePatterns = typeof collectGitHubUploadExcludePatterns === 'function'
+            ? collectGitHubUploadExcludePatterns()
+            : [];
 
         const uploadMode = readiness.mode;
         const forcePush = uploadMode === 'existing' && Boolean(document.getElementById('github-existing-force-push')?.checked);
@@ -1025,6 +1040,7 @@ function initializeGitView() {
                 mode: 'existing',
                 existingRepoTarget: readiness.existingValidation.normalized,
                 forcePush,
+                excludePatterns,
                 selectedPaths
             };
         } else {
@@ -1041,6 +1057,7 @@ function initializeGitView() {
                 addReadme,
                 addGitignore,
                 addLicense,
+                excludePatterns,
                 selectedPaths
             };
         }
@@ -1499,6 +1516,13 @@ async function openGitHubUploadModal() {
     const searchInput = document.getElementById('gh-upload-search');
     if (searchInput) {
         searchInput.value = '';
+    }
+    const excludeInput = document.getElementById('gh-upload-exclude-patterns');
+    if (excludeInput) {
+        excludeInput.value = githubUploadExcludeDraft || '';
+    }
+    if (typeof updateGitHubUploadExcludeHint === 'function') {
+        updateGitHubUploadExcludeHint();
     }
 
     const progressOverlay = document.getElementById('gh-upload-progress');
@@ -1962,6 +1986,21 @@ function getGitHubUploadSubmitReadiness(modeValidation) {
         };
     }
 
+    const excludeValidation = typeof getGitHubUploadExcludePatternValidation === 'function'
+        ? getGitHubUploadExcludePatternValidation()
+        : { valid: true, message: '' };
+    if (!excludeValidation.valid) {
+        return {
+            canSubmit: false,
+            reason: excludeValidation.message || 'Exclude patterns are invalid.',
+            mode,
+            validation,
+            existingValidation,
+            excludeValidation,
+            selectedPathCount
+        };
+    }
+
     if (selectedPathCount === 0) {
         return {
             canSubmit: false,
@@ -1969,6 +2008,7 @@ function getGitHubUploadSubmitReadiness(modeValidation) {
             mode,
             validation,
             existingValidation,
+            excludeValidation,
             selectedPathCount
         };
     }
@@ -1979,6 +2019,7 @@ function getGitHubUploadSubmitReadiness(modeValidation) {
         mode,
         validation,
         existingValidation,
+        excludeValidation,
         selectedPathCount
     };
 }
@@ -1987,6 +2028,9 @@ function updateGitHubUploadSubmitState() {
     const confirmBtn = document.getElementById('confirm-github-upload-btn');
     if (!confirmBtn) {
         return;
+    }
+    if (typeof updateGitHubUploadExcludeHint === 'function') {
+        updateGitHubUploadExcludeHint();
     }
 
     const mode = getGitHubUploadMode();

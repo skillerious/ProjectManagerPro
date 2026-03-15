@@ -7,6 +7,26 @@ function readRootFile(fileName) {
   return fs.readFileSync(path.join(__dirname, '..', fileName), 'utf8');
 }
 
+function readMainProcessSource() {
+  const parts = [readRootFile('main.js')];
+  const ipcDir = path.join(__dirname, '..', 'main', 'ipc');
+
+  if (!fs.existsSync(ipcDir)) {
+    return parts.join('\n');
+  }
+
+  const ipcFiles = fs.readdirSync(ipcDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.js'))
+    .map((entry) => path.join(ipcDir, entry.name))
+    .sort((left, right) => left.localeCompare(right));
+
+  ipcFiles.forEach((filePath) => {
+    parts.push(fs.readFileSync(filePath, 'utf8'));
+  });
+
+  return parts.join('\n');
+}
+
 function readRendererRuntimeSource() {
   const parts = [readRootFile('renderer.js')];
   const rendererDir = path.join(__dirname, '..', 'renderer');
@@ -78,7 +98,7 @@ test('preload bridge does not expose direct filesystem access helpers', () => {
 });
 
 test('main process registers handlers for update channels, hunk staging, and conflict assistant', () => {
-  const mainSource = readRootFile('main.js');
+  const mainSource = readMainProcessSource();
   const requiredHandlers = [
     "ipcMain.handle('set-update-channel'",
     "ipcMain.handle('rollback-update'",

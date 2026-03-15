@@ -1,0 +1,54 @@
+/* ============================================
+   GitHub Dark
+   GitHub's official dark theme
+   Author: GitHub
+   ============================================ */
+
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #010409;
+  --bg-tertiary: #161b22;
+  --bg-hover: #1c2128;
+  --text-primary: #c9d1d9;
+  --text-secondary: #8b949e;
+  --text-highlight: #f0f6fc;
+  --accent-primary: #58a6ff;
+  --accent-secondary: #bc8cff;
+  --accent-hover: #388bfd;
+  --border-color: #30363d;
+  --success: #3fb950;
+  --warning: #d29922;
+  --error: #f85149;
+  --info: #58a6ff;
+}
+
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 20px rgba(88, 166, 255, 0.12);
+}
+
+.btn-primary,
+.ext-btn-primary {
+  background: var(--accent-primary);
+}
+
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

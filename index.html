@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https://avatars.githubusercontent.com https://*.githubusercontent.com https://github.com; connect-src 'self' https://api.github.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https://avatars.githubusercontent.com https://*.githubusercontent.com https://github.com; connect-src 'self' https://api.github.com; base-uri 'self'; frame-ancestors 'none';">
     <title>Project Manager Pro</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -1590,7 +1590,7 @@
                         <i class="fas fa-sliders-h"></i>
                         <span>Settings</span>
                     </button>
-                    <button class="docs-nav-item" data-tab="git" data-keywords="git commits branch merge conflict push pull sync">
+                    <button class="docs-nav-item" data-tab="git" data-keywords="git commits branch merge conflict push pull sync upload exclude ignore secrets safety github">
                         <i class="fab fa-git-alt"></i>
                         <span>Git</span>
                     </button>
@@ -1610,7 +1610,7 @@
                         <i class="fas fa-life-ring"></i>
                         <span>Troubleshooting</span>
                     </button>
-                    <button class="docs-nav-item" data-tab="faq" data-keywords="faq questions answers common why how">
+                    <button class="docs-nav-item" data-tab="faq" data-keywords="faq questions answers common why how license licensing product key registration educational personal project mit">
                         <i class="fas fa-circle-question"></i>
                         <span>FAQ</span>
                     </button>
@@ -1889,6 +1889,14 @@ npm --version</pre>
                                 </ul>
                             </div>
                         </div>
+
+                        <div class="docs-callout docs-callout-info">
+                            <i class="fas fa-route"></i>
+                            <div>
+                                <h4>Smart Workflow Loop</h4>
+                                <p>Run work in short loops: <strong>select project &rarr; implement &rarr; validate &rarr; commit &rarr; sync</strong>. If a step fails, roll back one step instead of restarting the full flow.</p>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="docs-pane" data-pane="settings" data-keywords="settings persistence defaults import export">
@@ -1936,7 +1944,7 @@ npm --version</pre>
                         </div>
                     </div>
 
-                    <div class="docs-pane" data-pane="git" data-keywords="git github commit branch merge conflict push">
+                    <div class="docs-pane" data-pane="git" data-keywords="git github commit branch merge conflict push pull upload exclude ignore secrets safety">
                         <div class="docs-pane-header">
                             <h2>Git and GitHub Operations</h2>
                             <p>Source control best practices inside Project Manager's Git view and menu actions.</p>
@@ -1981,6 +1989,30 @@ npm --version</pre>
                                     <li>Resolve with Ours/Theirs/Manual strategy as appropriate.</li>
                                     <li>Re-run status and continue merge only after clean state.</li>
                                 </ul>
+                            </div>
+                        </div>
+
+                        <div class="docs-callout docs-callout-success">
+                            <i class="fas fa-shield-halved"></i>
+                            <div>
+                                <h4>Safe Upload Sequence</h4>
+                                <p>Use the guided Git view in this order: <strong>review changes &rarr; apply exclusions &rarr; confirm selected scope &rarr; commit &rarr; push</strong>. This keeps uploads intentional and repeatable.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-callout docs-callout-warn">
+                            <i class="fas fa-filter"></i>
+                            <div>
+                                <h4>Exclusion Rules First</h4>
+                                <p>Always exclude generated or machine-local content such as <code>node_modules</code>, <code>dist</code>, caches, logs, and temporary build output before upload. Verify the final selected-item count before publishing.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-callout docs-callout-critical">
+                            <i class="fas fa-user-shield"></i>
+                            <div>
+                                <h4>Never Publish Secrets</h4>
+                                <p>Do not upload <code>.env</code>, API keys, certificates, or private tokens. If sensitive data was committed accidentally, rotate credentials immediately and rewrite history before continuing.</p>
                             </div>
                         </div>
                     </div>
@@ -2182,6 +2214,14 @@ npm --version</pre>
                                 <li>Use <kbd>Ctrl</kbd> + <kbd>F</kbd> contextually before opening global search.</li>
                             </ul>
                         </div>
+
+                        <div class="docs-callout docs-callout-info">
+                            <i class="fas fa-gauge-high"></i>
+                            <div>
+                                <h4>Shortcut Ramp-Up</h4>
+                                <p>Start with four anchors (<kbd>Ctrl</kbd>+<kbd>N</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, <kbd>Ctrl</kbd>+<kbd>`</kbd>, <kbd>Ctrl</kbd>+<kbd>F</kbd>) and add more only after these are automatic.</p>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="docs-pane" data-pane="troubleshooting" data-keywords="troubleshooting diagnostics recovery fix common issues">
@@ -2225,6 +2265,14 @@ npm --version</pre>
                             <p>If behavior seems incorrect, refresh project list, reopen the target project, run a manual Git status refresh, and retry. If the issue persists, export diagnostics and file a report from the Help menu.</p>
                         </div>
 
+                        <div class="docs-callout docs-callout-warn">
+                            <i class="fas fa-stethoscope"></i>
+                            <div>
+                                <h4>Diagnose Before Resetting</h4>
+                                <p>Capture diagnostics first, then change one variable at a time. This avoids masking root causes and gives you clean evidence if you need to report an issue.</p>
+                            </div>
+                        </div>
+
                         <div class="docs-actions-row">
                             <button class="btn-secondary" id="docs-open-shortcuts-modal">
                                 <i class="fas fa-keyboard"></i> Open Shortcuts Modal
@@ -2235,10 +2283,18 @@ npm --version</pre>
                         </div>
                     </div>
 
-                    <div class="docs-pane" data-pane="faq" data-keywords="faq frequent questions answers">
+                    <div class="docs-pane" data-pane="faq" data-keywords="faq frequent questions answers license licensing product key registration educational personal project mit">
                         <div class="docs-pane-header">
                             <h2>Frequently Asked Questions</h2>
                             <p>Short, direct answers to common operational and configuration questions.</p>
+                        </div>
+
+                        <div class="docs-callout docs-callout-info">
+                            <i class="fas fa-circle-info"></i>
+                            <div>
+                                <h4>Licensing Transparency</h4>
+                                <p>This app is a project manager first. The repository uses MIT for source licensing, while the in-app product key flow is a separate personal cryptography experiment included in this project.</p>
+                            </div>
                         </div>
 
                         <div class="docs-faq-list">
@@ -2249,6 +2305,18 @@ npm --version</pre>
                             <details class="docs-faq-item">
                                 <summary>What is the safest first-time Git configuration?</summary>
                                 <p>Set Git executable path, username/email, and default branch in Settings before creating repositories. This prevents identity and branch inconsistencies.</p>
+                            </details>
+                            <details class="docs-faq-item">
+                                <summary>What is the purpose of the product key system in this app?</summary>
+                                <p>It is a side experiment for learning cryptography-style implementation details (key generation, validation, secure storage, integrity checks, and device binding). The app itself remains a project manager, not a learning tool.</p>
+                            </details>
+                            <details class="docs-faq-item">
+                                <summary>Are product keys a commercial license that users must buy?</summary>
+                                <p>No. This is a personal project, and the included keys are free and provided only because the key system is part of my experimentation. It is not a paid licensing or monetization system.</p>
+                            </details>
+                            <details class="docs-faq-item">
+                                <summary>What license applies to the source code itself?</summary>
+                                <p>The repository code is MIT licensed. Anyone can use it under MIT terms, and the in-app key gate does not replace or override those legal source-code licensing terms.</p>
                             </details>
                             <details class="docs-faq-item">
                                 <summary>How should teams manage extensions for consistent behavior?</summary>
@@ -2293,10 +2361,10 @@ npm --version</pre>
                             </div>
                         </div>
                         <div class="diagnostics-view-actions">
-                            <button class="btn-secondary" id="log-viewer-back-btn">
+                            <button type="button" class="btn-secondary" id="log-viewer-back-btn">
                                 <i class="fas fa-arrow-left"></i> Back
                             </button>
-                            <button class="btn-secondary" id="log-viewer-open-docs-btn">
+                            <button type="button" class="btn-secondary" id="log-viewer-open-docs-btn">
                                 <i class="fas fa-book"></i> Docs
                             </button>
                         </div>
@@ -2330,42 +2398,55 @@ npm --version</pre>
                             </div>
                         </div>
 
-                        <div class="log-viewer-smart-summary" id="log-viewer-smart-summary">
+                        <div class="log-viewer-smart-summary" id="log-viewer-smart-summary" role="status" aria-live="polite">
                             Diagnostics stream is initializing...
                         </div>
 
-                        <div class="log-viewer-controls">
-                            <div class="log-viewer-control-grow">
+                        <div class="log-viewer-controls" role="group" aria-label="Diagnostics filters">
+                            <div class="log-viewer-control-field log-viewer-control-grow">
                                 <label for="log-viewer-search-input">Search</label>
-                                <input type="text" id="log-viewer-search-input" placeholder="Search message, context, or source">
+                                <input type="text" id="log-viewer-search-input" placeholder="Search message, context, or source" autocomplete="off" spellcheck="false">
                             </div>
-                            <div>
+                            <div class="log-viewer-control-field log-viewer-select-field">
                                 <label for="log-viewer-level-filter">Level</label>
-                                <select id="log-viewer-level-filter">
-                                    <option value="all">All Levels</option>
-                                    <option value="error">Errors</option>
-                                    <option value="warn">Warnings</option>
-                                    <option value="info">Info</option>
-                                    <option value="debug">Debug</option>
-                                </select>
+                                <div class="log-viewer-select-wrap">
+                                    <select id="log-viewer-level-filter">
+                                        <option value="all">All Levels</option>
+                                        <option value="error">Errors</option>
+                                        <option value="warn">Warnings</option>
+                                        <option value="info">Info</option>
+                                        <option value="debug">Debug</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div>
+                            <div class="log-viewer-control-field log-viewer-select-field">
                                 <label for="log-viewer-source-filter">Source</label>
-                                <select id="log-viewer-source-filter">
-                                    <option value="all">All Sources</option>
-                                </select>
+                                <div class="log-viewer-select-wrap">
+                                    <select id="log-viewer-source-filter">
+                                        <option value="all">All Sources</option>
+                                    </select>
+                                </div>
                             </div>
-                            <label class="log-viewer-toggle">
+                            <label class="log-viewer-toggle" for="log-viewer-fault-toggle">
                                 <input type="checkbox" id="log-viewer-fault-toggle">
-                                <span>Faults only</span>
+                                <span class="log-viewer-toggle-indicator" aria-hidden="true">
+                                    <i class="fas fa-check"></i>
+                                </span>
+                                <span class="log-viewer-toggle-text">Faults only</span>
                             </label>
-                            <label class="log-viewer-toggle">
+                            <label class="log-viewer-toggle" for="log-viewer-live-toggle">
                                 <input type="checkbox" id="log-viewer-live-toggle" checked>
-                                <span>Live stream</span>
+                                <span class="log-viewer-toggle-indicator" aria-hidden="true">
+                                    <i class="fas fa-check"></i>
+                                </span>
+                                <span class="log-viewer-toggle-text">Live stream</span>
                             </label>
-                            <label class="log-viewer-toggle">
+                            <label class="log-viewer-toggle" for="log-viewer-autoscroll-toggle">
                                 <input type="checkbox" id="log-viewer-autoscroll-toggle" checked>
-                                <span>Auto scroll</span>
+                                <span class="log-viewer-toggle-indicator" aria-hidden="true">
+                                    <i class="fas fa-check"></i>
+                                </span>
+                                <span class="log-viewer-toggle-text">Auto scroll</span>
                             </label>
                         </div>
 
@@ -2407,21 +2488,26 @@ npm --version</pre>
                             </div>
                         </div>
 
-                        <div class="log-viewer-footer">
-                            <button class="btn-secondary" id="log-viewer-open-folder-btn">
-                                <i class="fas fa-folder-open"></i> Open Log Folder
+                        <div class="log-viewer-footer" role="toolbar" aria-label="Diagnostics actions">
+                            <button type="button" class="btn-secondary log-viewer-footer-btn is-neutral" id="log-viewer-open-folder-btn">
+                                <i class="fas fa-folder-open"></i>
+                                <span>Open Log Folder</span>
                             </button>
-                            <button class="btn-secondary" id="log-viewer-refresh-btn">
-                                <i class="fas fa-rotate"></i> Refresh
+                            <button type="button" class="btn-secondary log-viewer-footer-btn is-accent" id="log-viewer-refresh-btn">
+                                <i class="fas fa-rotate"></i>
+                                <span>Refresh</span>
                             </button>
-                            <button class="btn-secondary" id="log-viewer-copy-btn">
-                                <i class="fas fa-copy"></i> Copy Selected
+                            <button type="button" class="btn-secondary log-viewer-footer-btn is-neutral" id="log-viewer-copy-btn">
+                                <i class="fas fa-copy"></i>
+                                <span>Copy Selected</span>
                             </button>
-                            <button class="btn-secondary" id="log-viewer-export-btn">
-                                <i class="fas fa-file-export"></i> Export Visible
+                            <button type="button" class="btn-secondary log-viewer-footer-btn is-neutral" id="log-viewer-export-btn">
+                                <i class="fas fa-file-export"></i>
+                                <span>Export Visible</span>
                             </button>
-                            <button class="btn-secondary" id="log-viewer-clear-btn">
-                                <i class="fas fa-trash-can"></i> Clear Session Logs
+                            <button type="button" class="btn-secondary log-viewer-footer-btn is-danger" id="log-viewer-clear-btn">
+                                <i class="fas fa-trash-can"></i>
+                                <span>Clear Session Logs</span>
                             </button>
                         </div>
                     </div>
@@ -2557,11 +2643,96 @@ npm --version</pre>
                                 </div>
                                 <div class="setting-item">
                                     <label class="st-toggle">
+                                        <input type="checkbox" id="launch-on-startup" />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Launch AppManager on system startup</span>
+                                    </label>
+                                    <p class="setting-description">Start the app automatically when you sign in</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="reopen-last-workspace" checked />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Reopen last workspace on startup</span>
+                                    </label>
+                                    <p class="setting-description">Continue from your previous session automatically</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="minimize-to-tray" />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Minimize to tray</span>
+                                    </label>
+                                    <p class="setting-description">Keep the app running in the tray when minimized</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="notifications-enabled" checked />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Enable desktop notifications</span>
+                                    </label>
+                                    <p class="setting-description">Show system notifications for key events</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label for="status-time-format">Status Bar Time Format</label>
+                                    <p class="setting-description">Choose how time is displayed in the status bar</p>
+                                    <select id="status-time-format">
+                                        <option value="system">System Default</option>
+                                        <option value="24h">24-hour</option>
+                                        <option value="12h">12-hour</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="git-integration" checked />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Enable Git integration</span>
+                                    </label>
+                                    <p class="setting-description">Enable Git actions in menus and project workflows</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="enable-file-watcher" checked />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Enable file watcher</span>
+                                    </label>
+                                    <p class="setting-description">Track project file changes automatically for faster refreshes</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label for="auto-refresh-interval">Auto Refresh Interval</label>
+                                    <p class="setting-description">How often to refresh workspace data in the background</p>
+                                    <div class="st-number">
+                                        <button type="button" class="st-number-btn" data-dir="down"><i class="fas fa-minus"></i></button>
+                                        <input type="number" id="auto-refresh-interval" min="500" max="60000" step="500" value="2000" />
+                                        <button type="button" class="st-number-btn" data-dir="up"><i class="fas fa-plus"></i></button>
+                                    </div>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
                                         <input type="checkbox" id="confirm-delete" checked />
                                         <span class="st-toggle-switch"></span>
                                         <span class="st-toggle-text">Confirm before deleting projects</span>
                                     </label>
                                     <p class="setting-description">Show confirmation dialog when deleting projects</p>
+                                </div>
+                            </div>
+                            <div class="setting-group">
+                                <h3>Project Defaults</h3>
+                                <div class="setting-item">
+                                    <label for="default-project-prefix">Default Project Name Prefix</label>
+                                    <p class="setting-description">Automatically prepend this text when creating new projects</p>
+                                    <input type="text" id="default-project-prefix" placeholder="client-, app-, demo-" />
+                                </div>
+                                <div class="setting-item">
+                                    <label for="default-project-template">Default New Project Template</label>
+                                    <p class="setting-description">Preselect this template in the New Project dialog</p>
+                                    <select id="default-project-template">
+                                        <option value="blank">Blank Project</option>
+                                        <option value="nodejs">Node.js</option>
+                                        <option value="python">Python</option>
+                                        <option value="react">React</option>
+                                        <option value="web">Web (HTML/CSS/JS)</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -2630,6 +2801,52 @@ npm --version</pre>
                                     </label>
                                 </div>
                             </div>
+                            <div class="setting-group">
+                                <h3>Layout</h3>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="compact-mode" />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Enable compact mode</span>
+                                    </label>
+                                    <p class="setting-description">Reduce spacing to fit more content on screen</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="show-status-bar" checked />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Show status bar</span>
+                                    </label>
+                                    <p class="setting-description">Display status information at the bottom of the app</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="dense-sidebar" />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Use dense sidebar navigation</span>
+                                    </label>
+                                    <p class="setting-description">Shrink sidebar item spacing for faster navigation</p>
+                                </div>
+                            </div>
+                            <div class="setting-group">
+                                <h3>Accessibility</h3>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="reduced-transparency" />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Reduce transparency effects</span>
+                                    </label>
+                                    <p class="setting-description">Use flatter surfaces with less blur and glow</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="high-visibility-focus" />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">High-visibility focus indicators</span>
+                                    </label>
+                                    <p class="setting-description">Increase focus ring contrast for keyboard navigation</p>
+                                </div>
+                            </div>
                         </div>
                         <div class="settings-panel" id="editor-settings">
                             <h2>Editor Settings</h2>
@@ -2649,6 +2866,70 @@ npm --version</pre>
                                     <label for="editor-args">Editor Arguments</label>
                                     <p class="setting-description">Command line arguments to pass to the editor</p>
                                     <input type="text" id="editor-args" placeholder="--new-window" />
+                                </div>
+                                <div class="setting-item">
+                                    <label for="editor-open-mode">Editor Launch Mode</label>
+                                    <p class="setting-description">Control how AppManager opens folders in your editor</p>
+                                    <select id="editor-open-mode">
+                                        <option value="new-window">Always open in new window</option>
+                                        <option value="reuse-window">Reuse existing editor window</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="setting-group">
+                                <h3>Editing Defaults</h3>
+                                <div class="setting-item">
+                                    <label for="editor-word-wrap">Word Wrap</label>
+                                    <p class="setting-description">Default wrap behavior for newly opened files</p>
+                                    <select id="editor-word-wrap">
+                                        <option value="off">Off</option>
+                                        <option value="on">On</option>
+                                        <option value="wordWrapColumn">Wrap at preferred column</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item">
+                                    <label for="editor-tab-size">Tab Size</label>
+                                    <p class="setting-description">Default tab width used for indentation</p>
+                                    <div class="st-number">
+                                        <button type="button" class="st-number-btn" data-dir="down"><i class="fas fa-minus"></i></button>
+                                        <input type="number" id="editor-tab-size" min="2" max="8" step="1" value="4" />
+                                        <button type="button" class="st-number-btn" data-dir="up"><i class="fas fa-plus"></i></button>
+                                    </div>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="editor-format-on-open" />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Format files on open</span>
+                                    </label>
+                                    <p class="setting-description">Trigger formatter when opening supported file types</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="editor-trim-trailing-whitespace" />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Trim trailing whitespace on save</span>
+                                    </label>
+                                    <p class="setting-description">Remove trailing spaces when files are saved</p>
+                                </div>
+                            </div>
+                            <div class="setting-group">
+                                <h3>Workflow</h3>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="reveal-in-explorer" checked />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Reveal project in explorer before opening editor</span>
+                                    </label>
+                                    <p class="setting-description">Open file explorer to project root before launching editor</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="preserve-editor-focus" />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Preserve editor focus when switching projects</span>
+                                    </label>
+                                    <p class="setting-description">Avoid stealing focus back to AppManager after launch</p>
                                 </div>
                             </div>
                             <div class="setting-group">
@@ -2712,6 +2993,45 @@ npm --version</pre>
                                     </label>
                                     <p class="setting-description">Launch terminal with elevated privileges</p>
                                 </div>
+                                <div class="setting-item">
+                                    <label for="terminal-font-size">Terminal Font Size</label>
+                                    <p class="setting-description">Font size used by integrated terminal sessions</p>
+                                    <div class="st-number">
+                                        <button type="button" class="st-number-btn" data-dir="down"><i class="fas fa-minus"></i></button>
+                                        <input type="number" id="terminal-font-size" min="10" max="24" value="13" />
+                                        <button type="button" class="st-number-btn" data-dir="up"><i class="fas fa-plus"></i></button>
+                                    </div>
+                                </div>
+                                <div class="setting-item">
+                                    <label for="terminal-scrollback">Terminal Scrollback Lines</label>
+                                    <p class="setting-description">Maximum lines preserved in terminal output history</p>
+                                    <div class="st-number">
+                                        <button type="button" class="st-number-btn" data-dir="down"><i class="fas fa-minus"></i></button>
+                                        <input type="number" id="terminal-scrollback" min="500" max="100000" step="500" value="5000" />
+                                        <button type="button" class="st-number-btn" data-dir="up"><i class="fas fa-plus"></i></button>
+                                    </div>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="terminal-confirm-on-close" checked />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Confirm before closing terminal with active processes</span>
+                                    </label>
+                                    <p class="setting-description">Prevent accidental termination of running commands</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="terminal-use-login-shell" />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Start terminal using login shell profile</span>
+                                    </label>
+                                    <p class="setting-description">Load shell profile scripts before running commands</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label for="terminal-shell-args">Default Terminal Arguments</label>
+                                    <p class="setting-description">Optional arguments passed whenever a terminal is launched</p>
+                                    <input type="text" id="terminal-shell-args" placeholder="Example: -NoLogo -NoExit" />
+                                </div>
                             </div>
                         </div>
                         <div class="settings-panel" id="git-settings">
@@ -2760,6 +3080,63 @@ npm --version</pre>
                                     <p class="setting-description">Name for the initial branch</p>
                                     <input type="text" id="default-branch" placeholder="main" value="main" />
                                 </div>
+                                <div class="setting-item">
+                                    <label for="git-fetch-interval">Auto-fetch Interval (minutes)</label>
+                                    <p class="setting-description">How often to fetch from remote when auto-fetch is enabled</p>
+                                    <div class="st-number">
+                                        <button type="button" class="st-number-btn" data-dir="down"><i class="fas fa-minus"></i></button>
+                                        <input type="number" id="git-fetch-interval" min="1" max="120" value="5" />
+                                        <button type="button" class="st-number-btn" data-dir="up"><i class="fas fa-plus"></i></button>
+                                    </div>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="git-prune-on-fetch" checked />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Prune deleted remote branches on fetch</span>
+                                    </label>
+                                    <p class="setting-description">Keep branch lists clean by removing stale remote refs</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="git-use-pull-rebase" />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Use rebase for pull operations</span>
+                                    </label>
+                                    <p class="setting-description">Prefer linear history when updating local branches</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="git-auto-stash" />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Auto-stash local changes before pull/rebase</span>
+                                    </label>
+                                    <p class="setting-description">Temporarily stash and restore work when needed during updates</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="git-sign-commits" />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Sign commits by default</span>
+                                    </label>
+                                    <p class="setting-description">Require signed commits for improved provenance</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="git-require-message" checked />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Require non-empty commit messages</span>
+                                    </label>
+                                    <p class="setting-description">Prevent accidental commits with empty messages</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="git-confirm-force-push" checked />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Confirm before force push</span>
+                                    </label>
+                                    <p class="setting-description">Show a safety prompt before running force push actions</p>
+                                </div>
                             </div>
                         </div>
                         <div class="settings-panel" id="extensions-settings">
@@ -2789,8 +3166,36 @@ npm --version</pre>
                                         <option value="hourly">Every Hour</option>
                                         <option value="daily" selected>Daily</option>
                                         <option value="weekly">Weekly</option>
+                                        <option value="monthly">Monthly</option>
                                         <option value="never">Never</option>
                                     </select>
+                                </div>
+                            </div>
+                            <div class="setting-group">
+                                <h3>Trust & Recommendations</h3>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="extensions-allow-prerelease" />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Allow prerelease extension versions</span>
+                                    </label>
+                                    <p class="setting-description">Include prerelease builds when updates are available</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="extensions-trust-marketplace-only" checked />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Trust only verified marketplace publishers</span>
+                                    </label>
+                                    <p class="setting-description">Restrict automatic installs to known, trusted sources</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="extensions-auto-enable-workspace-recommendations" checked />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Auto-enable workspace recommendations</span>
+                                    </label>
+                                    <p class="setting-description">Enable recommended extensions automatically for opened workspaces</p>
                                 </div>
                             </div>
                             <div class="setting-group">
@@ -2878,6 +3283,60 @@ npm --version</pre>
                                 </div>
                             </div>
                             <div class="setting-group">
+                                <h3>Reliability & Diagnostics</h3>
+                                <div class="setting-item">
+                                    <label for="diagnostics-retention-days">Diagnostics Retention (days)</label>
+                                    <p class="setting-description">How long diagnostic logs are kept before cleanup</p>
+                                    <div class="st-number">
+                                        <button type="button" class="st-number-btn" data-dir="down"><i class="fas fa-minus"></i></button>
+                                        <input type="number" id="diagnostics-retention-days" min="1" max="365" value="30" />
+                                        <button type="button" class="st-number-btn" data-dir="up"><i class="fas fa-plus"></i></button>
+                                    </div>
+                                </div>
+                                <div class="setting-item">
+                                    <label for="startup-timeout-ms">Startup Timeout (ms)</label>
+                                    <p class="setting-description">Timeout for startup services before fallback mode is used</p>
+                                    <div class="st-number">
+                                        <button type="button" class="st-number-btn" data-dir="down"><i class="fas fa-minus"></i></button>
+                                        <input type="number" id="startup-timeout-ms" min="2000" max="120000" step="1000" value="15000" />
+                                        <button type="button" class="st-number-btn" data-dir="up"><i class="fas fa-plus"></i></button>
+                                    </div>
+                                </div>
+                                <div class="setting-item">
+                                    <label for="backup-retention-days">Backup Retention (days)</label>
+                                    <p class="setting-description">Number of days to keep automatic local setting backups</p>
+                                    <div class="st-number">
+                                        <button type="button" class="st-number-btn" data-dir="down"><i class="fas fa-minus"></i></button>
+                                        <input type="number" id="backup-retention-days" min="1" max="90" value="14" />
+                                        <button type="button" class="st-number-btn" data-dir="up"><i class="fas fa-plus"></i></button>
+                                    </div>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="crash-reporting-enabled" checked />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Enable crash reporting</span>
+                                    </label>
+                                    <p class="setting-description">Send crash metadata to improve stability and diagnostics</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="telemetry-enabled" />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Enable product telemetry</span>
+                                    </label>
+                                    <p class="setting-description">Share anonymized usage metrics to improve product decisions</p>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="st-toggle">
+                                        <input type="checkbox" id="safe-mode-on-startup" />
+                                        <span class="st-toggle-switch"></span>
+                                        <span class="st-toggle-text">Force safe mode on startup</span>
+                                    </label>
+                                    <p class="setting-description">Start with reduced features for troubleshooting and recovery</p>
+                                </div>
+                            </div>
+                            <div class="setting-group">
                                 <h3>Developer Options</h3>
                                 <div class="setting-item">
                                     <label class="st-toggle">
@@ -2937,6 +3396,44 @@ npm --version</pre>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="project-artwork-overlay" id="project-artwork-overlay" aria-hidden="true">
+        <div class="project-artwork-shell" role="dialog" aria-modal="true" aria-labelledby="project-artwork-title">
+            <div class="project-artwork-header">
+                <div class="project-artwork-title-wrap">
+                    <h3 id="project-artwork-title">Project Artwork</h3>
+                    <p id="project-artwork-subtitle">Choose how this project is displayed in the projects view.</p>
+                </div>
+                <button type="button" class="project-artwork-close" id="project-artwork-close" aria-label="Close artwork picker">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <p class="project-artwork-meta" id="project-artwork-meta">Scanning project artwork...</p>
+            <div class="project-artwork-toolbar">
+                <input
+                    type="text"
+                    class="project-artwork-search"
+                    id="project-artwork-search"
+                    placeholder="Filter artwork files..."
+                    spellcheck="false"
+                />
+                <select class="project-artwork-sort" id="project-artwork-sort">
+                    <option value="score">Best Match</option>
+                    <option value="name">Name</option>
+                    <option value="size">Largest File</option>
+                    <option value="dimensions">Largest Dimensions</option>
+                </select>
+                <button type="button" class="btn-secondary project-artwork-rescan" id="project-artwork-rescan">
+                    <i class="fas fa-sync-alt"></i> Rescan
+                </button>
+            </div>
+            <div class="project-artwork-grid" id="project-artwork-grid"></div>
+            <div class="project-artwork-footer">
+                <button type="button" class="btn-secondary" id="project-artwork-cancel">Cancel</button>
+                <button type="button" class="btn-primary" id="project-artwork-apply">Apply Artwork</button>
             </div>
         </div>
     </div>
@@ -3553,7 +4050,34 @@ npm --version</pre>
                             <button type="button" class="gh-upload-action-btn" id="gh-upload-refresh">
                                 <i class="fas fa-sync-alt"></i> Refresh
                             </button>
+                            <button type="button" class="gh-upload-action-btn" id="gh-upload-smart-exclude">
+                                <i class="fas fa-wand-magic-sparkles"></i> Smart Exclude
+                            </button>
                             <span class="gh-upload-selection-summary" id="gh-upload-selection-summary">Preparing file list...</span>
+                        </div>
+                        <div class="gh-upload-exclude-panel">
+                            <label class="gh-upload-exclude-label" for="gh-upload-exclude-patterns">
+                                <i class="fas fa-filter"></i>
+                                Exclude Patterns
+                            </label>
+                            <div class="gh-upload-exclude-controls">
+                                <input
+                                    type="text"
+                                    id="gh-upload-exclude-patterns"
+                                    class="gh-upload-exclude-input"
+                                    placeholder="Examples: *.md, docs/**, *.exe, screenshots/*.png"
+                                    spellcheck="false"
+                                />
+                                <button type="button" class="gh-upload-action-btn" id="gh-upload-apply-exclude">
+                                    <i class="fas fa-check"></i> Apply
+                                </button>
+                                <button type="button" class="gh-upload-action-btn" id="gh-upload-clear-exclude">
+                                    <i class="fas fa-eraser"></i> Clear
+                                </button>
+                            </div>
+                            <small class="gh-upload-exclude-hint" id="gh-upload-exclude-hint">
+                                Use comma-separated glob patterns. Supports <code>*</code>, <code>?</code>, and <code>**</code>.
+                            </small>
                         </div>
                         <div class="gh-upload-tree" id="gh-upload-tree" role="tree" aria-label="Files and folders to upload"></div>
                     </div>
@@ -4112,75 +4636,161 @@ npm --version</pre>
 
     <!-- Keyboard Shortcuts Modal -->
     <div class="modal" id="shortcuts-modal">
-        <div class="modal-content modal-large">
-            <div class="modal-header">
-                <h2>Keyboard Shortcuts</h2>
-                <button class="modal-close">
+        <div class="modal-content shortcuts-modal-pro">
+            <div class="ks-accent-bar"></div>
+            <div class="ks-header">
+                <div class="ks-header-main">
+                    <div class="ks-header-icon">
+                        <i class="fas fa-keyboard"></i>
+                    </div>
+                    <div>
+                        <h2>Keyboard Shortcuts</h2>
+                        <p>Fast paths for project creation, navigation, and Git workflows.</p>
+                    </div>
+                </div>
+                <button class="modal-close ks-close" aria-label="Close shortcuts dialog">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div class="modal-body shortcuts-body">
-                <div class="shortcuts-section">
-                    <h3>General</h3>
-                    <div class="shortcut-item">
-                        <span class="shortcut-key">Ctrl+N</span>
-                        <span class="shortcut-desc">New Project</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span class="shortcut-key">Ctrl+O</span>
-                        <span class="shortcut-desc">Open Project</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span class="shortcut-key">Ctrl+S</span>
-                        <span class="shortcut-desc">Save Workspace</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span class="shortcut-key">Ctrl+,</span>
-                        <span class="shortcut-desc">Open Settings</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span class="shortcut-key">Alt+F4</span>
-                        <span class="shortcut-desc">Exit Application</span>
-                    </div>
+            <div class="modal-body shortcuts-body-pro">
+                <div class="ks-hero-chips">
+                    <span class="ks-chip"><i class="fas fa-bolt"></i> Productivity</span>
+                    <span class="ks-chip"><i class="fas fa-hand-pointer"></i> Keyboard First</span>
+                    <span class="ks-chip"><i class="fas fa-shield-halved"></i> Low Friction Flow</span>
                 </div>
-                <div class="shortcuts-section">
-                    <h3>View</h3>
-                    <div class="shortcut-item">
-                        <span class="shortcut-key">Ctrl+B</span>
-                        <span class="shortcut-desc">Toggle Sidebar</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span class="shortcut-key">Ctrl++</span>
-                        <span class="shortcut-desc">Zoom In</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span class="shortcut-key">Ctrl+-</span>
-                        <span class="shortcut-desc">Zoom Out</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span class="shortcut-key">F11</span>
-                        <span class="shortcut-desc">Toggle Fullscreen</span>
-                    </div>
+
+                <div class="ks-grid">
+                    <section class="ks-section">
+                        <h3><i class="fas fa-compass"></i> Essentials</h3>
+
+                        <div class="ks-row">
+                            <div class="ks-keycombo"><span class="ks-key">Ctrl</span><span class="ks-plus">+</span><span class="ks-key">N</span></div>
+                            <div class="ks-row-meta">
+                                <span class="ks-action">Create Project</span>
+                                <span class="ks-desc">Open the new project workflow instantly.</span>
+                            </div>
+                        </div>
+                        <div class="ks-row">
+                            <div class="ks-keycombo"><span class="ks-key">Ctrl</span><span class="ks-plus">+</span><span class="ks-key">O</span></div>
+                            <div class="ks-row-meta">
+                                <span class="ks-action">Open Project</span>
+                                <span class="ks-desc">Open an existing folder in your workspace.</span>
+                            </div>
+                        </div>
+                        <div class="ks-row">
+                            <div class="ks-keycombo"><span class="ks-key">Ctrl</span><span class="ks-plus">+</span><span class="ks-key">S</span></div>
+                            <div class="ks-row-meta">
+                                <span class="ks-action">Save Context</span>
+                                <span class="ks-desc">Save settings or workspace state based on current view.</span>
+                            </div>
+                        </div>
+                        <div class="ks-row">
+                            <div class="ks-keycombo"><span class="ks-key">Ctrl</span><span class="ks-plus">+</span><span class="ks-key">,</span></div>
+                            <div class="ks-row-meta">
+                                <span class="ks-action">Open Settings</span>
+                                <span class="ks-desc">Jump straight into the full settings surface.</span>
+                            </div>
+                        </div>
+                        <div class="ks-row">
+                            <div class="ks-keycombo"><span class="ks-key">Ctrl</span><span class="ks-plus">+</span><span class="ks-key">Shift</span><span class="ks-plus">+</span><span class="ks-key">P</span></div>
+                            <div class="ks-row-meta">
+                                <span class="ks-action">Command Palette</span>
+                                <span class="ks-desc">Run commands without touching navigation menus.</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="ks-section">
+                        <h3><i class="fas fa-table-columns"></i> Navigation and View</h3>
+
+                        <div class="ks-row">
+                            <div class="ks-keycombo"><span class="ks-key">Alt</span><span class="ks-plus">+</span><span class="ks-key">1..6</span></div>
+                            <div class="ks-row-meta">
+                                <span class="ks-action">Primary View Jump</span>
+                                <span class="ks-desc">Switch across Dashboard, Projects, Templates, History, Git, and Extensions.</span>
+                            </div>
+                        </div>
+                        <div class="ks-row">
+                            <div class="ks-keycombo"><span class="ks-key">Ctrl</span><span class="ks-plus">+</span><span class="ks-key">F</span></div>
+                            <div class="ks-row-meta">
+                                <span class="ks-action">Context Search</span>
+                                <span class="ks-desc">Search within the current context (docs, settings, or projects).</span>
+                            </div>
+                        </div>
+                        <div class="ks-row">
+                            <div class="ks-keycombo"><span class="ks-key">Ctrl</span><span class="ks-plus">+</span><span class="ks-key">B</span></div>
+                            <div class="ks-row-meta">
+                                <span class="ks-action">Toggle Sidebar</span>
+                                <span class="ks-desc">Collapse or expand navigation to maximize focus area.</span>
+                            </div>
+                        </div>
+                        <div class="ks-row">
+                            <div class="ks-keycombo"><span class="ks-key">Ctrl</span><span class="ks-plus">+</span><span class="ks-key">+</span></div>
+                            <div class="ks-row-meta">
+                                <span class="ks-action">Zoom In</span>
+                                <span class="ks-desc">Increase UI scale for readability.</span>
+                            </div>
+                        </div>
+                        <div class="ks-row">
+                            <div class="ks-keycombo"><span class="ks-key">Ctrl</span><span class="ks-plus">+</span><span class="ks-key">-</span></div>
+                            <div class="ks-row-meta">
+                                <span class="ks-action">Zoom Out</span>
+                                <span class="ks-desc">Decrease UI scale for denser workspace layout.</span>
+                            </div>
+                        </div>
+                        <div class="ks-row">
+                            <div class="ks-keycombo"><span class="ks-key">F11</span></div>
+                            <div class="ks-row-meta">
+                                <span class="ks-action">Fullscreen</span>
+                                <span class="ks-desc">Toggle between windowed and fullscreen mode.</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="ks-section">
+                        <h3><i class="fas fa-screwdriver-wrench"></i> Tools and Git</h3>
+
+                        <div class="ks-row">
+                            <div class="ks-keycombo"><span class="ks-key">Ctrl</span><span class="ks-plus">+</span><span class="ks-key">`</span></div>
+                            <div class="ks-row-meta">
+                                <span class="ks-action">Open Terminal</span>
+                                <span class="ks-desc">Launch terminal in the configured project context.</span>
+                            </div>
+                        </div>
+                        <div class="ks-row">
+                            <div class="ks-keycombo"><span class="ks-key">Ctrl</span><span class="ks-plus">+</span><span class="ks-key">Shift</span><span class="ks-plus">+</span><span class="ks-key">G</span></div>
+                            <div class="ks-row-meta">
+                                <span class="ks-action">Clone Repository</span>
+                                <span class="ks-desc">Open clone flow and import from Git remote quickly.</span>
+                            </div>
+                        </div>
+                        <div class="ks-row">
+                            <div class="ks-keycombo"><span class="ks-key">F5</span></div>
+                            <div class="ks-row-meta">
+                                <span class="ks-action">Run Project</span>
+                                <span class="ks-desc">Start the selected project using configured runtime.</span>
+                            </div>
+                        </div>
+                        <div class="ks-row">
+                            <div class="ks-keycombo"><span class="ks-key">F1</span></div>
+                            <div class="ks-row-meta">
+                                <span class="ks-action">Open Documentation</span>
+                                <span class="ks-desc">Launch the in-app documentation center.</span>
+                            </div>
+                        </div>
+                        <div class="ks-row">
+                            <div class="ks-keycombo"><span class="ks-key">Alt</span><span class="ks-plus">+</span><span class="ks-key">F4</span></div>
+                            <div class="ks-row-meta">
+                                <span class="ks-action">Exit Application</span>
+                                <span class="ks-desc">Close the app window and end the session.</span>
+                            </div>
+                        </div>
+                    </section>
                 </div>
-                <div class="shortcuts-section">
-                    <h3>Tools</h3>
-                    <div class="shortcut-item">
-                        <span class="shortcut-key">Ctrl+`</span>
-                        <span class="shortcut-desc">Open Terminal</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span class="shortcut-key">Ctrl+Shift+P</span>
-                        <span class="shortcut-desc">Command Palette</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span class="shortcut-key">Ctrl+Shift+G</span>
-                        <span class="shortcut-desc">Clone Repository</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span class="shortcut-key">F5</span>
-                        <span class="shortcut-desc">Run Project</span>
-                    </div>
-                </div>
+            </div>
+            <div class="modal-footer ks-footer">
+                <p class="ks-footer-note"><i class="fas fa-lightbulb"></i> Memorize 3 shortcuts first: <strong>Ctrl+N</strong>, <strong>Ctrl+Shift+P</strong>, and <strong>Ctrl+`</strong>.</p>
+                <button class="btn-secondary modal-close">Close</button>
             </div>
         </div>
     </div>
@@ -4513,95 +5123,203 @@ npm --version</pre>
         </div>
     </div>
 
-    <!-- About Modal -->
-    <div class="modal" id="about-modal">
-        <div class="modal-content modal-about">
+    <!-- About Dialog -->
+    <div class="update-smart-overlay about-smart-overlay" id="about-modal" aria-hidden="true">
+        <div class="update-smart-shell about-smart-shell" id="about-smart-shell" role="dialog" aria-modal="true" aria-labelledby="about-title" tabindex="-1">
             <div class="about-accent-bar"></div>
 
-            <div class="about-header">
-                <div class="about-header-left">
-                    <div class="about-header-icon">
+            <button class="update-smart-close about-close" id="about-close-btn" type="button" aria-label="Close about dialog">
+                <i class="fas fa-times"></i>
+            </button>
+
+            <!-- Hero -->
+            <div class="about-hero">
+                <div class="about-icon-wrap">
+                    <div class="about-icon-ring"></div>
+                    <div class="about-icon">
                         <i class="fas fa-cubes"></i>
                     </div>
-                    <div>
-                        <h2 class="about-title">Project Manager Pro</h2>
-                        <p class="about-subtitle">Professional workspace for project, Git &amp; extension workflows</p>
-                    </div>
                 </div>
-                <button class="about-close modal-close" aria-label="Close about dialog">
-                    <i class="fas fa-times"></i>
+                <h2 class="about-title" id="about-title">Project Manager Pro</h2>
+                <p class="about-subtitle">Professional workspace for project, Git &amp; extension workflows</p>
+            </div>
+
+            <!-- Version / Channel / License chips -->
+            <div class="about-chips">
+                <div class="about-chip">
+                    <span class="about-chip-label">Version</span>
+                    <span class="about-chip-value" id="app-version">v1.0.0</span>
+                </div>
+                <div class="about-chip">
+                    <span class="about-chip-label">Channel</span>
+                    <span class="about-chip-value" id="about-release-channel" data-channel="stable">Stable</span>
+                </div>
+                <span class="about-chip about-chip-license unregistered" id="about-license-pill">
+                    <i class="fas fa-lock"></i>
+                    <span class="about-chip-value" id="about-license-text">Unregistered</span>
+                </span>
+            </div>
+
+            <!-- License detail -->
+            <div class="about-license-row">
+                <i class="fas fa-key"></i>
+                <span class="about-license-detail" id="about-license-detail">No product key activated</span>
+            </div>
+
+            <!-- Runtime -->
+            <div class="about-runtime-row">
+                <div class="about-runtime-chip">
+                    <i class="fas fa-bolt"></i>
+                    <span class="about-runtime-chip-label">Electron</span>
+                    <span class="about-runtime-chip-value" id="electron-version">--</span>
+                </div>
+                <div class="about-runtime-chip">
+                    <i class="fab fa-node-js"></i>
+                    <span class="about-runtime-chip-label">Node</span>
+                    <span class="about-runtime-chip-value" id="node-version">--</span>
+                </div>
+                <div class="about-runtime-chip">
+                    <i class="fas fa-desktop"></i>
+                    <span class="about-runtime-chip-label">Platform</span>
+                    <span class="about-runtime-chip-value" id="platform-info">--</span>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="about-actions">
+                <button class="about-action-btn" id="open-github">
+                    <i class="fab fa-github"></i>
+                    <span>GitHub</span>
+                </button>
+                <button class="about-action-btn" id="open-docs">
+                    <i class="fas fa-book"></i>
+                    <span>Docs</span>
+                </button>
+                <button class="about-action-btn about-action-primary" id="check-updates">
+                    <i class="fas fa-download"></i>
+                    <span>Updates</span>
+                </button>
+                <button class="about-action-btn about-action-danger" id="rollback-update">
+                    <i class="fas fa-rotate-left"></i>
+                    <span>Rollback</span>
+                </button>
+                <button class="about-action-btn" id="open-license">
+                    <i class="fas fa-scale-balanced"></i>
+                    <span>License</span>
                 </button>
             </div>
 
-            <div class="about-body">
-                <!-- Version & License row -->
-                <div class="about-meta-strip about-surface">
-                    <div class="about-meta-badges">
-                        <span class="about-version-badge" id="app-version">v1.0.0</span>
-                        <span class="about-channel-badge" id="about-release-channel" data-channel="stable">Stable Channel</span>
-                    </div>
-                    <span class="about-license-pill unregistered" id="about-license-pill">
-                        <i class="fas fa-lock"></i>
-                        <span id="about-license-text">Unregistered</span>
-                    </span>
-                </div>
-                <div class="about-license-key-row about-surface">
-                    <span class="about-license-detail" id="about-license-detail">No product key activated</span>
-                </div>
+            <!-- Footer -->
+            <div class="about-footer">
+                <span class="about-developer">Built by <strong>Robin Doak</strong></span>
+                <span class="about-copyright">&copy; 2026 Project Manager Pro</span>
+            </div>
+        </div>
+    </div>
 
-                <!-- Runtime info -->
-                <div class="about-panel">
-                    <div class="about-panel-title">Runtime</div>
-                    <div class="about-runtime">
-                        <div class="about-runtime-item">
-                            <span class="about-runtime-label"><i class="fas fa-bolt"></i> Electron</span>
-                            <span class="about-runtime-value" id="electron-version">--</span>
-                        </div>
-                        <div class="about-runtime-sep"></div>
-                        <div class="about-runtime-item">
-                            <span class="about-runtime-label"><i class="fab fa-node-js"></i> Node</span>
-                            <span class="about-runtime-value" id="node-version">--</span>
-                        </div>
-                        <div class="about-runtime-sep"></div>
-                        <div class="about-runtime-item">
-                            <span class="about-runtime-label"><i class="fas fa-desktop"></i> Platform</span>
-                            <span class="about-runtime-value" id="platform-info">--</span>
-                        </div>
+    <!-- Report Issue Smart Dialog -->
+    <div class="update-smart-overlay report-smart-overlay" id="report-issue-overlay" aria-hidden="true">
+        <div class="update-smart-shell report-smart-shell" id="report-issue-shell" role="dialog" aria-modal="true" aria-labelledby="report-issue-title" tabindex="-1">
+            <div class="report-accent-bar"></div>
+
+            <button class="update-smart-close report-close" id="report-issue-close" type="button" aria-label="Close report dialog">
+                <i class="fas fa-times"></i>
+            </button>
+
+            <!-- Hero -->
+            <div class="report-hero">
+                <div class="report-icon-wrap">
+                    <div class="report-icon-ring"></div>
+                    <div class="report-icon">
+                        <i class="fas fa-bug"></i>
                     </div>
                 </div>
+                <h2 class="report-title" id="report-issue-title">Report an Issue</h2>
+                <p class="report-subtitle">Help us improve by describing what went wrong</p>
+            </div>
 
-                <!-- Quick links -->
-                <div class="about-panel">
-                    <div class="about-panel-title">Quick Actions</div>
-                    <div class="about-actions">
-                        <button class="about-action-btn" id="open-github">
-                            <i class="fab fa-github"></i>
-                            <span>GitHub</span>
-                        </button>
-                        <button class="about-action-btn" id="open-docs">
-                            <i class="fas fa-book"></i>
-                            <span>Docs</span>
-                        </button>
-                        <button class="about-action-btn" id="check-updates">
-                            <i class="fas fa-download"></i>
-                            <span>Updates</span>
-                        </button>
-                        <button class="about-action-btn" id="rollback-update">
-                            <i class="fas fa-rotate-left"></i>
-                            <span>Rollback</span>
-                        </button>
-                        <button class="about-action-btn" id="open-license">
-                            <i class="fas fa-scale-balanced"></i>
-                            <span>License</span>
-                        </button>
+            <!-- Form (visible in default state) -->
+            <div class="report-form" id="report-form-section">
+                <div class="report-field">
+                    <label class="report-field-label">Category</label>
+                    <div class="report-dropdown" id="report-dropdown" tabindex="0" role="listbox" aria-label="Select a category">
+                        <div class="report-dropdown-trigger" id="report-dropdown-trigger">
+                            <span class="report-dropdown-placeholder" id="report-dropdown-text">Select a category...</span>
+                            <i class="fas fa-chevron-down report-dropdown-arrow"></i>
+                        </div>
+                        <div class="report-dropdown-menu" id="report-dropdown-menu" role="presentation">
+                            <div class="report-dropdown-item" data-value="bug" role="option">
+                                <i class="fas fa-bug"></i>
+                                <div class="report-dropdown-item-content">
+                                    <span class="report-dropdown-item-label">Bug Report</span>
+                                    <span class="report-dropdown-item-desc">Something isn't working correctly</span>
+                                </div>
+                            </div>
+                            <div class="report-dropdown-item" data-value="crash" role="option">
+                                <i class="fas fa-skull-crossbones"></i>
+                                <div class="report-dropdown-item-content">
+                                    <span class="report-dropdown-item-label">App Crash / Freeze</span>
+                                    <span class="report-dropdown-item-desc">The app became unresponsive or crashed</span>
+                                </div>
+                            </div>
+                            <div class="report-dropdown-item" data-value="ui" role="option">
+                                <i class="fas fa-palette"></i>
+                                <div class="report-dropdown-item-content">
+                                    <span class="report-dropdown-item-label">UI / Visual Issue</span>
+                                    <span class="report-dropdown-item-desc">Layout, styling, or rendering problem</span>
+                                </div>
+                            </div>
+                            <div class="report-dropdown-item" data-value="performance" role="option">
+                                <i class="fas fa-gauge-high"></i>
+                                <div class="report-dropdown-item-content">
+                                    <span class="report-dropdown-item-label">Performance</span>
+                                    <span class="report-dropdown-item-desc">Slow loading, lag, or high resource usage</span>
+                                </div>
+                            </div>
+                            <div class="report-dropdown-item" data-value="feature" role="option">
+                                <i class="fas fa-lightbulb"></i>
+                                <div class="report-dropdown-item-content">
+                                    <span class="report-dropdown-item-label">Feature Request</span>
+                                    <span class="report-dropdown-item-desc">Suggest a new feature or improvement</span>
+                                </div>
+                            </div>
+                            <div class="report-dropdown-item" data-value="other" role="option">
+                                <i class="fas fa-ellipsis"></i>
+                                <div class="report-dropdown-item-content">
+                                    <span class="report-dropdown-item-label">Other</span>
+                                    <span class="report-dropdown-item-desc">Doesn't fit the above categories</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+                    <input type="hidden" id="report-category" value="">
                 </div>
 
-                <!-- Footer -->
-                <div class="about-footer">
-                    <span class="about-developer">Built by <strong>Robin Doak</strong></span>
-                    <span class="about-copyright">&copy; 2026 Project Manager Pro</span>
+                <div class="report-field">
+                    <label class="report-field-label" for="report-description">Description</label>
+                    <textarea class="report-textarea" id="report-description" placeholder="Describe the issue in detail. Include steps to reproduce if possible..." rows="5" maxlength="2000"></textarea>
+                    <span class="report-char-count"><span id="report-char-current">0</span> / 2000</span>
                 </div>
+            </div>
+
+            <!-- Actions (visible in default state) -->
+            <div class="report-actions" id="report-actions-section">
+                <button class="report-btn report-btn-cancel" id="report-cancel" type="button">
+                    <span>Cancel</span>
+                </button>
+                <button class="report-btn report-btn-submit" id="report-submit" type="button" disabled>
+                    <i class="fas fa-paper-plane"></i>
+                    <span>Send Report</span>
+                </button>
+            </div>
+
+            <!-- Success state (hidden by default, toggled by JS) -->
+            <div class="report-success" id="report-success">
+                <div class="report-success-icon">
+                    <i class="fas fa-check"></i>
+                </div>
+                <p class="report-success-text">Report sent successfully!</p>
+                <p class="report-success-sub">Thank you for helping us improve.</p>
             </div>
         </div>
     </div>
@@ -4701,8 +5419,17 @@ npm --version</pre>
         </div>
         <div class="status-right">
             <span class="status-item status-item-message" title="Application Status">
-                <i class="fas fa-circle-notch"></i>
+                <i class="fas fa-circle-dot" id="status-message-icon"></i>
                 <span id="status-message">Ready</span>
+            </span>
+            <span class="status-item status-item-update-progress" id="status-update-progress" title="Background update download progress" hidden>
+                <i class="fas fa-cloud-arrow-down"></i>
+                <div class="status-update-progress-content">
+                    <span class="status-update-progress-text" id="status-update-progress-text">Downloading update 0%</span>
+                    <div class="status-update-progress-track">
+                        <div class="status-update-progress-bar" id="status-update-progress-bar"></div>
+                    </div>
+                </div>
             </span>
             <span class="status-item status-item-view" title="Current View">
                 <i class="fas fa-window-maximize"></i>
@@ -4727,6 +5454,10 @@ npm --version</pre>
             <span class="status-item status-item-version" title="Application Version">
                 <i class="fas fa-tag"></i>
                 <span id="status-app-version">v1.0.0</span>
+            </span>
+            <span class="status-item status-item-time" title="Current Time">
+                <i class="fas fa-clock"></i>
+                <span id="status-time">--:--</span>
             </span>
         </div>
     </div>

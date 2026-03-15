@@ -1,0 +1,22 @@
+{
+  "id": "tokyo-night",
+  "name": "Tokyo Night",
+  "displayName": "Tokyo Night",
+  "description": "A clean dark theme that celebrates the lights of downtown Tokyo at night. Neon blues and soft purples glow against the midnight cityscape backdrop.",
+  "author": "enkia",
+  "version": "1.5.0",
+  "category": "themes",
+  "type": "themes",
+  "main": "theme.css",
+  "icon": "fa-city",
+  "rating": 4.9,
+  "downloads": 3800000,
+  "tags": ["dark", "blue", "neon", "tokyo", "popular"],
+  "colors": ["#1a1b26", "#7aa2f7", "#bb9af7", "#9ece6a", "#e0af68", "#f7768e"],
+  "preview": {
+    "background": "#1a1b26",
+    "accent": "#7aa2f7",
+    "secondary": "#bb9af7",
+    "palette": ["#1a1b26", "#7aa2f7", "#bb9af7", "#9ece6a", "#e0af68", "#f7768e"]
+  }
+}

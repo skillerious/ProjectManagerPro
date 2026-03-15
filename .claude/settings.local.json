@@ -17,7 +17,8 @@
       "Bash(nul)",
       "Bash(timeout /t 1)",
       "Bash(find:*)",
-      "Bash(\"./node_modules/.bin/electron.cmd\" .)"
+      "Bash(\"./node_modules/.bin/electron.cmd\" .)",
+      "Bash(npm run:*)"
     ],
     "deny": [],
     "ask": []

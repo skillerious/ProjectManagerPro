@@ -1,0 +1,22 @@
+{
+  "id": "rose-pine",
+  "name": "Rosé Pine",
+  "displayName": "Rosé Pine",
+  "description": "All natural pine, faux fur and a bit of soho vibes for the classy minimalist. Soft muted tones with delicate rose and lavender accents create a cozy, refined atmosphere.",
+  "author": "Rosé Pine",
+  "version": "2.8.0",
+  "category": "themes",
+  "type": "themes",
+  "main": "theme.css",
+  "icon": "fa-spa",
+  "rating": 4.8,
+  "downloads": 1500000,
+  "tags": ["dark", "pastel", "cozy", "rose"],
+  "colors": ["#191724", "#c4a7e7", "#ebbcba", "#9ccfd8", "#f6c177", "#eb6f92"],
+  "preview": {
+    "background": "#191724",
+    "accent": "#c4a7e7",
+    "secondary": "#ebbcba",
+    "palette": ["#191724", "#c4a7e7", "#ebbcba", "#9ccfd8", "#f6c177", "#eb6f92"]
+  }
+}

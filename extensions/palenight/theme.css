@@ -1,0 +1,47 @@
+/* ============================================
+   Palenight
+   Elegant Material-like theme
+   Author: Olaolu Olawuyi
+   ============================================ */
+
+:root {
+  --bg-primary: #292d3e;
+  --bg-secondary: #232635;
+  --bg-tertiary: #34324a;
+  --bg-hover: #3b3a55;
+  --text-primary: #a6accd;
+  --text-secondary: #676e95;
+  --text-highlight: #ffffff;
+  --accent-primary: #82aaff;
+  --accent-secondary: #c792ea;
+  --accent-hover: #6e99ed;
+  --border-color: #3e3d58;
+  --success: #c3e88d;
+  --warning: #ffcb6b;
+  --error: #ff5370;
+  --info: #89ddff;
+}
+
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 20px rgba(130, 170, 255, 0.15);
+}
+
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+
+.stat-card { background: var(--bg-tertiary); }
+.modal-content { background: var(--bg-secondary); }

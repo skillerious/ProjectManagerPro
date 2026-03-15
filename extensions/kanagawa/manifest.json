@@ -1,0 +1,22 @@
+{
+  "id": "kanagawa",
+  "name": "Kanagawa",
+  "displayName": "Kanagawa",
+  "description": "Inspired by Katsushika Hokusai's famous painting 'The Great Wave off Kanagawa'. Deep ocean blues with warm ink-brush accents capture the essence of Japanese ukiyo-e art.",
+  "author": "rebelot",
+  "version": "2.0.0",
+  "category": "themes",
+  "type": "themes",
+  "main": "theme.css",
+  "icon": "fa-water",
+  "rating": 4.8,
+  "downloads": 1200000,
+  "tags": ["dark", "japanese", "blue", "artistic", "unique"],
+  "colors": ["#1f1f28", "#7e9cd8", "#957fb8", "#98bb6c", "#e6c384", "#c34043"],
+  "preview": {
+    "background": "#1f1f28",
+    "accent": "#7e9cd8",
+    "secondary": "#957fb8",
+    "palette": ["#1f1f28", "#7e9cd8", "#957fb8", "#98bb6c", "#e6c384", "#c34043"]
+  }
+}

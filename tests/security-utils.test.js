@@ -206,7 +206,9 @@ test('window security manager validates and rejects unsafe URLs', () => {
 
   assert.equal(manager.validateExternalUrl('https://example.com').valid, true);
   assert.equal(manager.validateExternalUrl('javascript:alert(1)').valid, false);
-  assert.equal(manager.validateExternalUrl('file:///').valid, false);
+  const blockedFile = manager.validateExternalUrl('file:///tmp/test.txt');
+  assert.equal(blockedFile.valid, false);
+  assert.equal(blockedFile.error, 'Unsupported URL protocol');
 });
 
 test('windows command utils quote and reject oversized commands', async () => {
@@ -248,17 +250,60 @@ test('vscode launcher service caches successful launcher resolution', async () =
   assert.equal(executeCallCount, 1);
 });
 
+test('validateGitRefName rejects null bytes and CRLF injection attempts', () => {
+  assert.equal(validateGitRefName('main\0evil').valid, false);
+  assert.equal(validateGitRefName('main\r\nevil').valid, false);
+  assert.equal(validateGitRefName('main\nevil').valid, false);
+  assert.equal(validateGitRefName('a'.repeat(300)).valid, false);
+  assert.equal(validateGitRefName('').valid, false);
+});
+
+test('validateGitFilePathInput rejects null bytes and encoded traversal', () => {
+  assert.equal(validateGitFilePathInput('src/\0evil.js').valid, false);
+  assert.equal(validateGitFilePathInput('src/..\\..\\etc\\passwd').valid, false);
+  assert.equal(validateGitFilePathInput('a'.repeat(1025)).valid, false);
+  // Exactly at the limit should still be valid
+  assert.equal(validateGitFilePathInput('a'.repeat(1024)).valid, true);
+});
+
+test('parseAllowedRunCommand rejects nested quote injection and pipe attacks', () => {
+  assert.equal(parseAllowedRunCommand('git add "src/\'$(echo pwned)\'.js"'), null);
+  assert.equal(parseAllowedRunCommand('npm install | cat /etc/passwd'), null);
+  assert.equal(parseAllowedRunCommand('git add `whoami`'), null);
+  assert.equal(parseAllowedRunCommand('npm install; rm -rf /'), null);
+  assert.equal(parseAllowedRunCommand(''), null);
+});
+
+test('window security manager rejects invalid fileURLToPath results', () => {
+  const manager = createWindowSecurityManager({
+    baseDir: process.cwd(),
+    logger: { warn() {} },
+    session: null,
+    shell: null,
+    fileURLToPathFn: () => ''  // simulate empty result
+  });
+
+  assert.equal(manager.isTrustedLocalAppUrl('file:///test.html'), false);
+});
+
 test('settings sanitization enforces allowed values and strips renderer secrets', () => {
   const sanitized = sanitizeAppSettings({
     theme: 'ext:my-theme',
-    terminalApp: 'invalid-terminal',
-    defaultBranch: 'main',
+    terminalApp: 'PoWeRsHeLl',
+    updateChannel: 'BeTa',
+    extensionUpdateCheck: 'WEEKLY',
+    repoUrl: 'https://user:secret@example.com/private',
+    defaultBranch: 'feature/.hidden',
     [GITHUB_TOKEN_ENCRYPTED_KEY]: 'ZmFrZQ==',
     [GITHUB_TOKEN_LEGACY_KEY]: 'legacytoken'
   }, process.cwd());
 
   assert.equal(sanitized.theme, 'ext:my-theme');
-  assert.equal(sanitized.terminalApp, 'cmd');
+  assert.equal(sanitized.terminalApp, 'powershell');
+  assert.equal(sanitized.updateChannel, 'beta');
+  assert.equal(sanitized.extensionUpdateCheck, 'weekly');
+  assert.equal(sanitized.repoUrl, '');
+  assert.equal(sanitized.defaultBranch, 'main');
   assert.equal(typeof sanitized[GITHUB_TOKEN_ENCRYPTED_KEY], 'string');
   assert.equal(typeof sanitized[GITHUB_TOKEN_LEGACY_KEY], 'undefined');
 

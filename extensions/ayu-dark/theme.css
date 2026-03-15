@@ -1,0 +1,47 @@
+/* ============================================
+   Ayu Dark
+   Warm, elegant dark theme
+   Author: Ayu
+   ============================================ */
+
+:root {
+  --bg-primary: #0b0e14;
+  --bg-secondary: #0d1017;
+  --bg-tertiary: #131721;
+  --bg-hover: #161b26;
+  --text-primary: #bfbdb6;
+  --text-secondary: #636a76;
+  --text-highlight: #e6e1cf;
+  --accent-primary: #e6b450;
+  --accent-secondary: #ffb454;
+  --accent-hover: #d9a23d;
+  --border-color: #1c2433;
+  --success: #7fd962;
+  --warning: #e6b450;
+  --error: #d95757;
+  --info: #39bae6;
+}
+
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 20px rgba(230, 180, 80, 0.15);
+}
+
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+
+.stat-card { background: var(--bg-tertiary); }
+.modal-content { background: var(--bg-secondary); }

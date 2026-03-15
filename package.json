@@ -1,6 +1,6 @@
 {
   "name": "project-manager-pro",
-  "version": "2.6.1",
+  "version": "2.8.0",
   "description": "Professional Project Manager with VSCode-like interface",
   "main": "main.js",
   "scripts": {
@@ -56,6 +56,7 @@
     "chokidar": "^3.5.3",
     "diff": "^5.1.0",
     "electron-updater": "^6.3.9",
+    "nodemailer": "^8.0.2",
     "vis-network": "^9.1.6"
   },
   "optionalDependencies": {

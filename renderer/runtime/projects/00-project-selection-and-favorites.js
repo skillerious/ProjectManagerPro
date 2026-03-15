@@ -10,6 +10,471 @@ function normalizeRecentProjectPath(projectPath) {
         .replace(/\/$/, '');
 }
 
+const PROJECT_ARTWORK_SELECTIONS_STORAGE_KEY = 'appmanager.projectArtworkSelections.v1';
+const PROJECT_ARTWORK_SELECTION_AUTO = '__auto__';
+const PROJECT_ARTWORK_SELECTION_DEFAULT = '__default__';
+const PROJECT_ARTWORK_CACHE_TTL_MS = 2 * 60 * 1000;
+
+let projectArtworkSelections = {};
+const projectArtworkCache = new Map();
+const projectArtworkLookupInFlight = new Map();
+let activeProjectArtworkDialogCloser = null;
+
+function normalizeProjectArtworkSelectionValue(value) {
+    if (value === PROJECT_ARTWORK_SELECTION_DEFAULT) {
+        return PROJECT_ARTWORK_SELECTION_DEFAULT;
+    }
+
+    if (value === PROJECT_ARTWORK_SELECTION_AUTO) {
+        return PROJECT_ARTWORK_SELECTION_AUTO;
+    }
+
+    if (typeof value !== 'string') {
+        return PROJECT_ARTWORK_SELECTION_AUTO;
+    }
+
+    const normalized = value.trim().replace(/\\/g, '/');
+    if (!normalized || normalized.length > 320 || /[\0\r\n]/.test(normalized)) {
+        return PROJECT_ARTWORK_SELECTION_AUTO;
+    }
+
+    return normalized;
+}
+
+function loadProjectArtworkSelectionState() {
+    try {
+        const raw = localStorage.getItem(PROJECT_ARTWORK_SELECTIONS_STORAGE_KEY);
+        if (!raw) {
+            projectArtworkSelections = {};
+            return;
+        }
+
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            projectArtworkSelections = {};
+            return;
+        }
+
+        const nextState = {};
+        Object.entries(parsed).forEach(([key, value]) => {
+            if (typeof key !== 'string' || !key.trim()) {
+                return;
+            }
+
+            const normalizedValue = normalizeProjectArtworkSelectionValue(value);
+            if (normalizedValue !== PROJECT_ARTWORK_SELECTION_AUTO) {
+                nextState[key] = normalizedValue;
+            }
+        });
+
+        projectArtworkSelections = nextState;
+    } catch {
+        projectArtworkSelections = {};
+    }
+}
+
+function saveProjectArtworkSelectionState() {
+    try {
+        localStorage.setItem(PROJECT_ARTWORK_SELECTIONS_STORAGE_KEY, JSON.stringify(projectArtworkSelections));
+    } catch (error) {
+        console.warn('Unable to persist project artwork selections:', error);
+    }
+}
+
+function getProjectArtworkSelection(projectPath) {
+    const normalizedPath = normalizeRecentProjectPath(projectPath);
+    if (!normalizedPath) {
+        return PROJECT_ARTWORK_SELECTION_AUTO;
+    }
+
+    return normalizeProjectArtworkSelectionValue(projectArtworkSelections[normalizedPath]);
+}
+
+function setProjectArtworkSelection(projectPath, selection) {
+    const normalizedPath = normalizeRecentProjectPath(projectPath);
+    if (!normalizedPath) {
+        return false;
+    }
+
+    const normalizedSelection = normalizeProjectArtworkSelectionValue(selection);
+    if (normalizedSelection === PROJECT_ARTWORK_SELECTION_AUTO) {
+        delete projectArtworkSelections[normalizedPath];
+    } else {
+        projectArtworkSelections[normalizedPath] = normalizedSelection;
+    }
+
+    saveProjectArtworkSelectionState();
+    return true;
+}
+
+function moveProjectArtworkSelectionPath(oldPath, newPath) {
+    const oldKey = normalizeRecentProjectPath(oldPath);
+    const newKey = normalizeRecentProjectPath(newPath);
+
+    if (!oldKey || !newKey || oldKey === newKey) {
+        return;
+    }
+
+    const selection = projectArtworkSelections[oldKey];
+    if (typeof selection !== 'string' || !selection) {
+        return;
+    }
+
+    projectArtworkSelections[newKey] = selection;
+    delete projectArtworkSelections[oldKey];
+    saveProjectArtworkSelectionState();
+
+    const oldCache = projectArtworkCache.get(oldKey);
+    if (oldCache) {
+        projectArtworkCache.set(newKey, oldCache);
+        projectArtworkCache.delete(oldKey);
+    }
+}
+
+function invalidateProjectArtworkCache(projectPath) {
+    const normalizedPath = normalizeRecentProjectPath(projectPath);
+    if (!normalizedPath) {
+        return;
+    }
+
+    projectArtworkCache.delete(normalizedPath);
+}
+
+function sanitizeProjectArtworkCandidate(candidate) {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+        return null;
+    }
+
+    const relativePath = typeof candidate.relativePath === 'string'
+        ? candidate.relativePath.trim().replace(/\\/g, '/')
+        : '';
+    const fileUrl = typeof candidate.fileUrl === 'string'
+        ? candidate.fileUrl.trim()
+        : '';
+    const fileName = typeof candidate.fileName === 'string'
+        ? candidate.fileName.trim()
+        : '';
+    const extension = typeof candidate.extension === 'string'
+        ? candidate.extension.trim().toLowerCase()
+        : '';
+    const width = Number.isFinite(candidate?.width)
+        ? Math.max(0, Math.floor(Number(candidate.width)))
+        : 0;
+    const height = Number.isFinite(candidate?.height)
+        ? Math.max(0, Math.floor(Number(candidate.height)))
+        : 0;
+    const fileSizeBytes = Number.isFinite(candidate?.fileSizeBytes)
+        ? Math.max(0, Math.floor(Number(candidate.fileSizeBytes)))
+        : 0;
+    const score = Number.isFinite(candidate?.score)
+        ? Number(candidate.score)
+        : 0;
+
+    if (!relativePath || !fileUrl || !fileUrl.startsWith('file:')) {
+        return null;
+    }
+
+    return {
+        relativePath,
+        fileName: fileName || basenamePath(relativePath) || relativePath,
+        extension,
+        width,
+        height,
+        fileSizeBytes,
+        score,
+        fileUrl
+    };
+}
+
+function normalizeProjectArtworkScanResponse(response) {
+    const candidates = Array.isArray(response?.candidates)
+        ? response.candidates.map(sanitizeProjectArtworkCandidate).filter(Boolean)
+        : [];
+
+    return {
+        success: response?.success === true,
+        candidates,
+        scannedAssetsFolders: Number.isFinite(response?.scannedAssetsFolders)
+            ? Math.max(0, Math.floor(Number(response.scannedAssetsFolders)))
+            : 0,
+        scannedArtworkDirectories: Number.isFinite(response?.scannedArtworkDirectories)
+            ? Math.max(0, Math.floor(Number(response.scannedArtworkDirectories)))
+            : 0,
+        error: typeof response?.error === 'string' ? response.error : ''
+    };
+}
+
+function getCachedProjectArtworkScan(projectPath, options = {}) {
+    const normalizedPath = normalizeRecentProjectPath(projectPath);
+    if (!normalizedPath) {
+        return null;
+    }
+
+    const cached = projectArtworkCache.get(normalizedPath);
+    if (!cached || !cached.data) {
+        return null;
+    }
+
+    const allowStale = options.allowStale === true;
+    if (!allowStale && (Date.now() - cached.ts) > PROJECT_ARTWORK_CACHE_TTL_MS) {
+        projectArtworkCache.delete(normalizedPath);
+        return null;
+    }
+
+    return cached.data;
+}
+
+async function fetchProjectArtworkScan(projectPath, options = {}) {
+    const normalizedPath = normalizeRecentProjectPath(projectPath);
+    if (!normalizedPath) {
+        return normalizeProjectArtworkScanResponse(null);
+    }
+
+    const force = options.force === true;
+    if (!force) {
+        const cached = getCachedProjectArtworkScan(projectPath);
+        if (cached) {
+            return cached;
+        }
+    }
+
+    const inFlight = projectArtworkLookupInFlight.get(normalizedPath);
+    if (inFlight) {
+        return inFlight;
+    }
+
+    const ARTWORK_LOOKUP_TIMEOUT_MS = 30000;
+
+    const request = (async () => {
+        try {
+            const responsePromise = ipcRenderer.invoke('get-project-artwork-candidates', projectPath);
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Artwork lookup timed out')), ARTWORK_LOOKUP_TIMEOUT_MS);
+            });
+            const response = await Promise.race([responsePromise, timeoutPromise]);
+            const normalizedResponse = normalizeProjectArtworkScanResponse(response);
+            projectArtworkCache.set(normalizedPath, {
+                ts: Date.now(),
+                data: normalizedResponse
+            });
+            return normalizedResponse;
+        } catch (error) {
+            console.warn('Failed to fetch project artwork candidates:', error);
+            const fallback = normalizeProjectArtworkScanResponse({
+                success: false,
+                error: error?.message || 'Failed to fetch project artwork candidates',
+                candidates: [],
+                scannedAssetsFolders: 0,
+                scannedArtworkDirectories: 0
+            });
+            projectArtworkCache.set(normalizedPath, {
+                ts: Date.now(),
+                data: fallback
+            });
+            return fallback;
+        } finally {
+            projectArtworkLookupInFlight.delete(normalizedPath);
+        }
+    })();
+
+    projectArtworkLookupInFlight.set(normalizedPath, request);
+    return request;
+}
+
+function resolveProjectArtworkSelection(candidates, selection) {
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+        return null;
+    }
+
+    if (selection === PROJECT_ARTWORK_SELECTION_DEFAULT) {
+        return null;
+    }
+
+    if (selection && selection !== PROJECT_ARTWORK_SELECTION_AUTO) {
+        const normalizedSelection = selection.toLowerCase();
+        const matched = candidates.find((candidate) => candidate.relativePath.toLowerCase() === normalizedSelection);
+        if (matched) {
+            return matched;
+        }
+    }
+
+    return candidates[0];
+}
+
+function buildProjectArtworkInfo(projectPath, scanResponse = null) {
+    const normalizedScan = scanResponse && typeof scanResponse === 'object'
+        ? scanResponse
+        : normalizeProjectArtworkScanResponse(null);
+    const candidates = Array.isArray(normalizedScan.candidates) ? normalizedScan.candidates : [];
+    let selection = getProjectArtworkSelection(projectPath);
+    let activeCandidate = resolveProjectArtworkSelection(candidates, selection);
+
+    if (selection !== PROJECT_ARTWORK_SELECTION_AUTO && selection !== PROJECT_ARTWORK_SELECTION_DEFAULT && !activeCandidate) {
+        selection = PROJECT_ARTWORK_SELECTION_AUTO;
+        setProjectArtworkSelection(projectPath, PROJECT_ARTWORK_SELECTION_AUTO);
+        activeCandidate = resolveProjectArtworkSelection(candidates, selection);
+    }
+
+    return {
+        selection,
+        activeCandidate: activeCandidate || null,
+        candidates,
+        hasArtwork: Boolean(activeCandidate),
+        hasCandidates: candidates.length > 0,
+        hasMultipleCandidates: candidates.length > 1,
+        scannedAssetsFolders: Number.isFinite(normalizedScan.scannedAssetsFolders)
+            ? normalizedScan.scannedAssetsFolders
+            : 0,
+        scannedArtworkDirectories: Number.isFinite(normalizedScan.scannedArtworkDirectories)
+            ? normalizedScan.scannedArtworkDirectories
+            : 0,
+        error: typeof normalizedScan.error === 'string' ? normalizedScan.error : ''
+    };
+}
+
+function getCachedProjectArtworkInfo(projectPath, options = {}) {
+    const scanResponse = getCachedProjectArtworkScan(projectPath, options);
+    if (!scanResponse) {
+        return null;
+    }
+
+    return buildProjectArtworkInfo(projectPath, scanResponse);
+}
+
+async function getProjectArtworkInfo(projectPath, options = {}) {
+    const scanResponse = await fetchProjectArtworkScan(projectPath, options);
+    return buildProjectArtworkInfo(projectPath, scanResponse);
+}
+
+function buildProjectCardIconMarkup(config = {}, artworkCandidate = null) {
+    const accentColor = typeof config.color === 'string' && config.color
+        ? config.color
+        : '#dcb67a';
+    const iconClass = escapeHtml(config.icon || 'fas fa-folder');
+    const safeProjectName = escapeHtml(config.projectName || 'Project');
+
+    if (artworkCandidate && artworkCandidate.fileUrl) {
+        return `
+            <div class="project-icon-modern project-icon-artwork" data-project-icon-slot style="--project-artwork-accent: ${accentColor}">
+                <span class="project-icon-artwork-glow"></span>
+                <img src="${escapeHtml(artworkCandidate.fileUrl)}" alt="${safeProjectName} artwork" loading="lazy">
+            </div>
+        `;
+    }
+
+    return `
+        <div class="project-icon-modern" data-project-icon-slot style="background: ${accentColor}15; color: ${accentColor}">
+            <i class="${iconClass}"></i>
+        </div>
+    `;
+}
+
+function buildProjectCardIconConfigFromCard(card) {
+    return {
+        color: card?.dataset?.projectAccentColor || '#dcb67a',
+        icon: card?.dataset?.projectTypeIcon || 'fas fa-folder',
+        projectName: card?.dataset?.projectName || 'Project'
+    };
+}
+
+function applyProjectArtworkStateToCard(card, artworkInfo) {
+    if (!card || !artworkInfo || typeof artworkInfo !== 'object') {
+        return;
+    }
+
+    const iconSlot = card.querySelector('[data-project-icon-slot]');
+    if (!iconSlot) {
+        return;
+    }
+
+    const normalizedCardPath = normalizeRecentProjectPath(card.dataset.projectPath || '');
+    if (!normalizedCardPath) {
+        return;
+    }
+
+    const activeCandidate = artworkInfo.activeCandidate || null;
+    const nextSignature = activeCandidate
+        ? `art:${activeCandidate.relativePath}`
+        : `icon:${artworkInfo.selection || PROJECT_ARTWORK_SELECTION_AUTO}`;
+    if (card.dataset.projectArtworkSignature === nextSignature) {
+        return;
+    }
+
+    iconSlot.outerHTML = buildProjectCardIconMarkup(buildProjectCardIconConfigFromCard(card), activeCandidate);
+    card.dataset.projectArtworkSignature = nextSignature;
+
+    if (activeCandidate) {
+        card.classList.add('has-project-artwork');
+        card.dataset.projectArtworkPath = activeCandidate.relativePath;
+    } else {
+        card.classList.remove('has-project-artwork');
+        delete card.dataset.projectArtworkPath;
+    }
+
+    const nextIconSlot = card.querySelector('[data-project-icon-slot]');
+    if (!nextIconSlot || !activeCandidate) {
+        return;
+    }
+
+    const artworkImage = nextIconSlot.querySelector('img');
+    artworkImage?.addEventListener('error', () => {
+        invalidateProjectArtworkCache(card.dataset.projectPath || '');
+        card.dataset.projectArtworkSignature = '';
+        applyProjectArtworkStateToCard(card, {
+            ...artworkInfo,
+            activeCandidate: null,
+            hasArtwork: false
+        });
+    }, { once: true });
+}
+
+async function refreshProjectCardArtwork(card, projectPath, options = {}) {
+    if (!card) {
+        return;
+    }
+
+    const targetPath = typeof projectPath === 'string' && projectPath.trim()
+        ? projectPath
+        : card.dataset.projectPath || '';
+    const normalizedTargetPath = normalizeRecentProjectPath(targetPath);
+    if (!normalizedTargetPath) {
+        return;
+    }
+
+    const cachedInfo = getCachedProjectArtworkInfo(targetPath);
+    if (cachedInfo) {
+        applyProjectArtworkStateToCard(card, cachedInfo);
+    }
+
+    const info = await getProjectArtworkInfo(targetPath, { force: options.force === true });
+    if (!document.body.contains(card)) {
+        return;
+    }
+
+    if (normalizeRecentProjectPath(card.dataset.projectPath || '') !== normalizedTargetPath) {
+        return;
+    }
+
+    applyProjectArtworkStateToCard(card, info);
+}
+
+function syncProjectArtworkAcrossCards(projectPath, options = {}) {
+    const normalizedPath = normalizeRecentProjectPath(projectPath);
+    if (!normalizedPath) {
+        return;
+    }
+
+    const cards = document.querySelectorAll('.project-card-modern[data-project-path]');
+    cards.forEach((card) => {
+        const cardPath = normalizeRecentProjectPath(card.dataset.projectPath || '');
+        if (cardPath !== normalizedPath) {
+            return;
+        }
+
+        void refreshProjectCardArtwork(card, projectPath, options);
+    });
+}
+
 function loadFavoriteProjectsState() {
     try {
         const raw = localStorage.getItem(FAVORITE_PROJECTS_STORAGE_KEY);
@@ -244,6 +709,8 @@ async function renameProjectFromCard(project) {
 
     recentProjects = updatedRecent;
     moveProjectFavoritePath(project.path, renamedProject.path);
+    moveProjectArtworkSelectionPath(project.path, renamedProject.path);
+    invalidateProjectArtworkCache(project.path);
     await ipcRenderer.invoke('save-recent-projects', recentProjects);
 
     if (normalizeRecentProjectPath(currentProject?.path || '') === oldPathKey) {
@@ -417,6 +884,9 @@ function createProjectCard(project, renderIndex = 0) {
     const safeProjectParentPath = escapeHtml(projectParentPath);
     const alphaKey = deriveProjectAlphaKey(project.name || parentFolderName || project.path || '');
     card.dataset.alphaKey = alphaKey;
+    card.dataset.projectAccentColor = config.color;
+    card.dataset.projectTypeIcon = config.icon;
+    card.dataset.projectName = String(project.name || 'Untitled Project');
 
     // Create a safe project object for passing to functions
     const safeProject = {
@@ -430,9 +900,7 @@ function createProjectCard(project, renderIndex = 0) {
         <div class="project-card-content">
             <div class="project-card-top">
                 <div class="project-identity">
-                    <div class="project-icon-modern" style="background: ${config.color}15; color: ${config.color}">
-                        <i class="${config.icon}"></i>
-                    </div>
+                    ${buildProjectCardIconMarkup({ ...config, projectName: project.name || 'Untitled Project' })}
                     <div class="project-headline">
                         <h3 class="project-name" title="${safeProjectName}">${safeProjectName}</h3>
                         <p class="project-subpath" title="${safeProjectParentPath}">${safeParentFolderName}</p>
@@ -532,7 +1000,541 @@ function createProjectCard(project, renderIndex = 0) {
         showProjectContextMenu(e, project);
     });
 
+    void refreshProjectCardArtwork(card, project.path);
+
     return card;
+}
+
+function setProjectArtworkContextMenuItemState(menuItem, options = {}) {
+    if (!menuItem) {
+        return;
+    }
+
+    const label = typeof options.label === 'string' && options.label.trim()
+        ? options.label.trim()
+        : 'Project Artwork';
+    const disabled = options.disabled === true;
+    const loading = options.loading === true;
+    const hint = typeof options.hint === 'string' ? options.hint.trim() : '';
+
+    const labelEl = menuItem.querySelector('span');
+    if (labelEl) {
+        labelEl.textContent = label;
+    }
+
+    menuItem.classList.toggle('is-disabled', disabled);
+    menuItem.classList.toggle('is-loading', loading);
+    menuItem.dataset.disabled = String(disabled);
+    menuItem.title = hint;
+}
+
+async function hydrateProjectArtworkContextMenuItem(menu, project) {
+    const menuItem = menu?.querySelector('.context-menu-item[data-action="change-artwork"]');
+    if (!menuItem || !project?.path) {
+        return;
+    }
+
+    const cachedInfo = getCachedProjectArtworkInfo(project.path, { allowStale: true });
+    if (cachedInfo) {
+        if (cachedInfo.hasMultipleCandidates) {
+            setProjectArtworkContextMenuItemState(menuItem, {
+                label: 'Change Project Artwork',
+                disabled: false,
+                loading: false,
+                hint: `${cachedInfo.candidates.length} artwork files found`
+            });
+        } else if (cachedInfo.hasCandidates) {
+            setProjectArtworkContextMenuItemState(menuItem, {
+                label: 'Project Artwork Options',
+                disabled: false,
+                loading: false,
+                hint: 'Select auto artwork or the default icon'
+            });
+        } else {
+            setProjectArtworkContextMenuItemState(menuItem, {
+                label: 'No Project Artwork Found',
+                disabled: true,
+                loading: false,
+                hint: (cachedInfo.scannedArtworkDirectories > 0 || cachedInfo.scannedAssetsFolders > 0)
+                    ? 'No logo/icon files found in artwork folders'
+                    : 'No artwork folder discovered'
+            });
+        }
+    } else {
+        setProjectArtworkContextMenuItemState(menuItem, {
+            label: 'Scanning Project Artwork...',
+            disabled: true,
+            loading: true,
+            hint: 'Scanning artwork folders for logo files'
+        });
+    }
+
+    const info = await getProjectArtworkInfo(project.path, { force: false });
+    if (!document.body.contains(menu) || !menuItem.isConnected) {
+        return;
+    }
+
+    if (info.hasMultipleCandidates) {
+        setProjectArtworkContextMenuItemState(menuItem, {
+            label: 'Change Project Artwork',
+            disabled: false,
+            loading: false,
+            hint: `${info.candidates.length} artwork files available`
+        });
+        return;
+    }
+
+    if (info.hasCandidates) {
+        setProjectArtworkContextMenuItemState(menuItem, {
+            label: 'Project Artwork Options',
+            disabled: false,
+            loading: false,
+            hint: 'Choose auto artwork or fallback icon'
+        });
+        return;
+    }
+
+    setProjectArtworkContextMenuItemState(menuItem, {
+        label: 'No Project Artwork Found',
+        disabled: true,
+        loading: false,
+        hint: (info.scannedArtworkDirectories > 0 || info.scannedAssetsFolders > 0)
+            ? 'No logo/icon files found in artwork folders'
+            : 'No artwork folder discovered for this project'
+    });
+}
+
+function formatProjectArtworkFileSize(bytes) {
+    const value = Number(bytes) || 0;
+    if (value <= 0) {
+        return '';
+    }
+
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let scaled = value;
+    let unitIndex = 0;
+    while (scaled >= 1024 && unitIndex < units.length - 1) {
+        scaled /= 1024;
+        unitIndex += 1;
+    }
+    const precision = scaled >= 10 || unitIndex === 0 ? 0 : 1;
+    return `${scaled.toFixed(precision)} ${units[unitIndex]}`;
+}
+
+function formatProjectArtworkDimensions(candidate) {
+    const width = Number(candidate?.width) || 0;
+    const height = Number(candidate?.height) || 0;
+    if (width <= 0 || height <= 0) {
+        return '';
+    }
+
+    return `${width}x${height}`;
+}
+
+function buildProjectArtworkPickerOptions(artworkInfo = null) {
+    const info = artworkInfo && typeof artworkInfo === 'object'
+        ? artworkInfo
+        : { candidates: [] };
+    const candidates = Array.isArray(info.candidates) ? info.candidates : [];
+    const autoCandidate = candidates[0] || null;
+    const autoMetaParts = [];
+    const autoDimensions = formatProjectArtworkDimensions(autoCandidate);
+    const autoSize = formatProjectArtworkFileSize(autoCandidate?.fileSizeBytes || 0);
+    if (autoDimensions) autoMetaParts.push(autoDimensions);
+    if (autoSize) autoMetaParts.push(autoSize);
+
+    const options = [
+        {
+            value: PROJECT_ARTWORK_SELECTION_AUTO,
+            label: 'Auto Pick',
+            description: autoCandidate
+                ? `Best match: ${autoCandidate.fileName || autoCandidate.relativePath}`
+                : 'No detected artwork available',
+            pathHint: autoCandidate?.relativePath || '',
+            badge: autoCandidate ? 'Recommended' : '',
+            iconClass: 'fas fa-magic',
+            candidate: autoCandidate,
+            sortScore: Number(autoCandidate?.score) || Number.MAX_SAFE_INTEGER,
+            sortBytes: Number(autoCandidate?.fileSizeBytes) || 0,
+            sortArea: (Number(autoCandidate?.width) || 0) * (Number(autoCandidate?.height) || 0),
+            isSystemOption: true,
+            systemOrder: 0,
+            searchText: `auto recommended ${autoCandidate?.fileName || ''} ${autoCandidate?.relativePath || ''} ${autoMetaParts.join(' ')}`
+        },
+        {
+            value: PROJECT_ARTWORK_SELECTION_DEFAULT,
+            label: 'Type Icon',
+            description: 'Use the project-type icon on the card',
+            pathHint: '',
+            badge: '',
+            iconClass: 'fas fa-layer-group',
+            candidate: null,
+            sortScore: Number.MIN_SAFE_INTEGER,
+            sortBytes: 0,
+            sortArea: 0,
+            isSystemOption: true,
+            systemOrder: 1,
+            searchText: 'default icon type fallback'
+        }
+    ];
+
+    candidates.forEach((candidate, index) => {
+        const dimensions = formatProjectArtworkDimensions(candidate);
+        const fileSize = formatProjectArtworkFileSize(candidate.fileSizeBytes);
+        const metaParts = [];
+        if (dimensions) metaParts.push(dimensions);
+        if (fileSize) metaParts.push(fileSize);
+
+        options.push({
+            value: candidate.relativePath,
+            label: candidate.fileName || `Artwork ${index + 1}`,
+            description: metaParts.length > 0 ? metaParts.join(' • ') : 'Artwork file',
+            pathHint: candidate.relativePath,
+            badge: index === 0 ? 'Top Match' : '',
+            iconClass: 'fas fa-image',
+            candidate,
+            sortScore: Number(candidate.score) || 0,
+            sortBytes: Number(candidate.fileSizeBytes) || 0,
+            sortArea: (Number(candidate.width) || 0) * (Number(candidate.height) || 0),
+            isSystemOption: false,
+            systemOrder: 99,
+            searchText: `${candidate.fileName || ''} ${candidate.relativePath || ''} ${metaParts.join(' ')}`
+        });
+    });
+
+    return options;
+}
+
+function createProjectArtworkPickerOptionElement(option, selectedValue) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'project-artwork-option';
+    button.dataset.selectionValue = option.value;
+    button.setAttribute('aria-pressed', String(option.value === selectedValue));
+    button.classList.toggle('is-selected', option.value === selectedValue);
+
+    const hasImagePreview = Boolean(option?.candidate?.fileUrl);
+    const safeImageUrl = hasImagePreview ? escapeHtml(option.candidate.fileUrl) : '';
+    const safeLabel = escapeHtml(option.label || 'Artwork');
+    const safeDescription = escapeHtml(option.description || '');
+    const safePathHint = escapeHtml(option.pathHint || '');
+    const safeBadge = escapeHtml(option.badge || '');
+    const safeIconClass = escapeHtml(option.iconClass || 'fas fa-image');
+
+    button.innerHTML = `
+        <span class="project-artwork-option-check"><i class="fas fa-check"></i></span>
+        ${safeBadge ? `<span class="project-artwork-option-badge">${safeBadge}</span>` : ''}
+        <span class="project-artwork-thumb ${hasImagePreview ? '' : 'project-artwork-thumb-placeholder'}">
+            ${hasImagePreview
+                ? `<img src="${safeImageUrl}" alt="${safeLabel} preview" loading="lazy">`
+                : `<i class="${safeIconClass}"></i>`}
+        </span>
+        <span class="project-artwork-option-label">${safeLabel}</span>
+        <span class="project-artwork-option-desc">${safeDescription}</span>
+        ${safePathHint ? `<span class="project-artwork-option-path" title="${safePathHint}">${safePathHint}</span>` : ''}
+    `;
+    button.title = option.pathHint || option.description || option.label || '';
+
+    return button;
+}
+
+async function showProjectArtworkPickerDialog(project, artworkInfo) {
+    const overlay = document.getElementById('project-artwork-overlay');
+    const titleEl = document.getElementById('project-artwork-title');
+    const subtitleEl = document.getElementById('project-artwork-subtitle');
+    const metaEl = document.getElementById('project-artwork-meta');
+    const searchInput = document.getElementById('project-artwork-search');
+    const sortSelect = document.getElementById('project-artwork-sort');
+    const rescanBtn = document.getElementById('project-artwork-rescan');
+    const gridEl = document.getElementById('project-artwork-grid');
+    const applyBtn = document.getElementById('project-artwork-apply');
+    const cancelBtn = document.getElementById('project-artwork-cancel');
+    const closeBtn = document.getElementById('project-artwork-close');
+
+    if (!overlay || !titleEl || !subtitleEl || !metaEl || !searchInput || !sortSelect || !rescanBtn || !gridEl || !applyBtn || !cancelBtn || !closeBtn) {
+        return null;
+    }
+
+    if (typeof activeProjectArtworkDialogCloser === 'function') {
+        activeProjectArtworkDialogCloser(null);
+    }
+
+    let info = artworkInfo && typeof artworkInfo === 'object' ? artworkInfo : await getProjectArtworkInfo(project.path);
+    let options = buildProjectArtworkPickerOptions(info);
+    const currentSelection = typeof info.selection === 'string' ? info.selection : PROJECT_ARTWORK_SELECTION_AUTO;
+    const matchedSelectionOption = options.find((option) => {
+        if (typeof option.value !== 'string') {
+            return false;
+        }
+        return option.value.toLowerCase() === currentSelection.toLowerCase();
+    });
+    let selectedValue = matchedSelectionOption
+        ? matchedSelectionOption.value
+        : PROJECT_ARTWORK_SELECTION_AUTO;
+
+    const projectLabel = project?.name || basenamePath(project?.path || '') || 'Project';
+    titleEl.textContent = 'Project Artwork';
+    subtitleEl.textContent = `Choose how ${projectLabel} is displayed in All Projects.`;
+    searchInput.value = '';
+    sortSelect.value = sortSelect.value || 'score';
+
+    let optionButtons = [];
+
+    const updateMetaText = () => {
+        if (info.candidates.length > 0) {
+            const directoryCount = info.scannedArtworkDirectories > 0
+                ? info.scannedArtworkDirectories
+                : info.scannedAssetsFolders;
+            metaEl.textContent = directoryCount > 0
+                ? `${info.candidates.length} artwork file${info.candidates.length === 1 ? '' : 's'} detected across ${directoryCount} artwork folder${directoryCount === 1 ? '' : 's'}`
+                : `${info.candidates.length} artwork file${info.candidates.length === 1 ? '' : 's'} detected`;
+            return;
+        }
+
+        metaEl.textContent = 'No artwork files detected. Try Rescan after adding logos.';
+    };
+
+    const getVisibleOptions = () => {
+        const query = searchInput.value.trim().toLowerCase();
+        const systemOptions = options
+            .filter((option) => option.isSystemOption)
+            .sort((a, b) => a.systemOrder - b.systemOrder);
+        let candidateOptions = options.filter((option) => !option.isSystemOption);
+
+        if (query) {
+            candidateOptions = candidateOptions.filter((option) => {
+                const searchText = `${option.searchText || ''} ${option.label || ''} ${option.pathHint || ''}`.toLowerCase();
+                return searchText.includes(query);
+            });
+        }
+
+        const sortMode = sortSelect.value || 'score';
+        candidateOptions.sort((left, right) => {
+            if (sortMode === 'name') {
+                return String(left.label || '').localeCompare(String(right.label || ''), undefined, { sensitivity: 'base', numeric: true });
+            }
+            if (sortMode === 'size') {
+                if (right.sortBytes !== left.sortBytes) {
+                    return right.sortBytes - left.sortBytes;
+                }
+            } else if (sortMode === 'dimensions') {
+                if (right.sortArea !== left.sortArea) {
+                    return right.sortArea - left.sortArea;
+                }
+            } else {
+                if (right.sortScore !== left.sortScore) {
+                    return right.sortScore - left.sortScore;
+                }
+            }
+
+            if (right.sortScore !== left.sortScore) {
+                return right.sortScore - left.sortScore;
+            }
+            return String(left.pathHint || left.label || '').localeCompare(String(right.pathHint || right.label || ''), undefined, {
+                sensitivity: 'base',
+                numeric: true
+            });
+        });
+
+        return [...systemOptions, ...candidateOptions];
+    };
+
+    const renderOptions = () => {
+        const visibleOptions = getVisibleOptions();
+        const selectionStillVisible = visibleOptions.some((option) => option.value === selectedValue);
+        if (!selectionStillVisible) {
+            selectedValue = PROJECT_ARTWORK_SELECTION_AUTO;
+        }
+
+        gridEl.innerHTML = '';
+        optionButtons = [];
+
+        if (visibleOptions.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'project-artwork-empty';
+            empty.innerHTML = '<i class="fas fa-magnifying-glass"></i><span>No artwork matched your filter.</span>';
+            gridEl.appendChild(empty);
+            return;
+        }
+
+        visibleOptions.forEach((option) => {
+            const button = createProjectArtworkPickerOptionElement(option, selectedValue);
+            button.addEventListener('click', () => {
+                selectedValue = option.value;
+                optionButtons.forEach((item) => {
+                    const selected = item.dataset.selectionValue === selectedValue;
+                    item.classList.toggle('is-selected', selected);
+                    item.setAttribute('aria-pressed', String(selected));
+                });
+                applyBtn.disabled = false;
+            });
+            gridEl.appendChild(button);
+            optionButtons.push(button);
+        });
+    };
+
+    const setRescanBusy = (busy) => {
+        const isBusy = busy === true;
+        rescanBtn.disabled = isBusy;
+        rescanBtn.classList.toggle('is-busy', isBusy);
+    };
+
+    updateMetaText();
+    renderOptions();
+    setRescanBusy(false);
+
+    overlay.classList.add('active');
+    overlay.setAttribute('aria-hidden', 'false');
+    applyBtn.disabled = false;
+
+    return new Promise((resolve) => {
+        let closed = false;
+
+        const closeDialog = (result = null) => {
+            if (closed) {
+                return;
+            }
+
+            closed = true;
+            overlay.classList.remove('active');
+            overlay.setAttribute('aria-hidden', 'true');
+
+            overlay.removeEventListener('mousedown', handleOverlayMouseDown);
+            document.removeEventListener('keydown', handleKeyDown, true);
+            cancelBtn.removeEventListener('click', handleCancel);
+            closeBtn.removeEventListener('click', handleCancel);
+            applyBtn.removeEventListener('click', handleApply);
+            searchInput.removeEventListener('input', handleSearchInput);
+            sortSelect.removeEventListener('change', handleSortChange);
+            rescanBtn.removeEventListener('click', handleRescan);
+
+            if (activeProjectArtworkDialogCloser === closeDialog) {
+                activeProjectArtworkDialogCloser = null;
+            }
+
+            resolve(result);
+        };
+
+        const handleCancel = () => {
+            closeDialog(null);
+        };
+
+        const handleApply = () => {
+            closeDialog(selectedValue);
+        };
+
+        const handleSearchInput = () => {
+            renderOptions();
+        };
+
+        const handleSortChange = () => {
+            renderOptions();
+        };
+
+        const handleRescan = async () => {
+            setRescanBusy(true);
+            metaEl.textContent = 'Rescanning artwork folders...';
+            try {
+                invalidateProjectArtworkCache(project.path);
+                info = await getProjectArtworkInfo(project.path, { force: true });
+                options = buildProjectArtworkPickerOptions(info);
+                updateMetaText();
+                renderOptions();
+            } catch (error) {
+                console.warn('Project artwork rescan failed:', error);
+                showNotification('Unable to rescan artwork right now', 'warning');
+                updateMetaText();
+            } finally {
+                setRescanBusy(false);
+            }
+        };
+
+        const handleOverlayMouseDown = (event) => {
+            if (event.target === overlay) {
+                closeDialog(null);
+            }
+        };
+
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                closeDialog(null);
+                return;
+            }
+
+            if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                event.preventDefault();
+                event.stopPropagation();
+                closeDialog(selectedValue);
+            }
+        };
+
+        activeProjectArtworkDialogCloser = closeDialog;
+
+        overlay.addEventListener('mousedown', handleOverlayMouseDown);
+        document.addEventListener('keydown', handleKeyDown, true);
+        cancelBtn.addEventListener('click', handleCancel);
+        closeBtn.addEventListener('click', handleCancel);
+        applyBtn.addEventListener('click', handleApply);
+        searchInput.addEventListener('input', handleSearchInput);
+        sortSelect.addEventListener('change', handleSortChange);
+        rescanBtn.addEventListener('click', handleRescan);
+
+        requestAnimationFrame(() => {
+            const selectedBtn = optionButtons.find((button) => button.dataset.selectionValue === selectedValue);
+            (selectedBtn || optionButtons[0] || searchInput).focus({ preventScroll: true });
+        });
+    });
+}
+
+async function changeProjectArtworkFromContext(project) {
+    if (!project?.path) {
+        return;
+    }
+
+    const artworkInfo = await getProjectArtworkInfo(project.path, { force: true });
+    if (!artworkInfo.hasCandidates) {
+        showNotification(
+            (artworkInfo.scannedArtworkDirectories > 0 || artworkInfo.scannedAssetsFolders > 0)
+                ? 'No logo or icon artwork found in scanned artwork folders.'
+                : 'No artwork folders were found for this project.',
+            'info'
+        );
+        return;
+    }
+
+    const selectedValue = await showProjectArtworkPickerDialog(project, artworkInfo);
+    if (selectedValue === null || selectedValue === undefined) {
+        return;
+    }
+
+    const normalizedSelectedValue = normalizeProjectArtworkSelectionValue(selectedValue);
+    const previousSelection = getProjectArtworkSelection(project.path);
+    if (normalizedSelectedValue === previousSelection) {
+        return;
+    }
+
+    const projectLabel = project.name || basenamePath(project.path) || 'project';
+    setProjectArtworkSelection(project.path, normalizedSelectedValue);
+    syncProjectArtworkAcrossCards(project.path, { force: false });
+
+    if (normalizedSelectedValue === PROJECT_ARTWORK_SELECTION_DEFAULT) {
+        showNotification(`Using default icon for ${projectLabel}`, 'success');
+        return;
+    }
+
+    if (normalizedSelectedValue === PROJECT_ARTWORK_SELECTION_AUTO) {
+        showNotification(`Artwork auto-selection restored for ${projectLabel}`, 'success');
+        return;
+    }
+
+    const latestArtworkInfo = getCachedProjectArtworkInfo(project.path, { allowStale: true }) || artworkInfo;
+    const pickedCandidate = latestArtworkInfo.candidates.find(
+        (candidate) => candidate.relativePath.toLowerCase() === normalizedSelectedValue.toLowerCase()
+    );
+    const artworkName = pickedCandidate?.fileName || normalizedSelectedValue;
+    showNotification(`Artwork set to ${artworkName}`, 'success');
 }
 
 // Show context menu for project card
@@ -573,6 +1575,10 @@ function showProjectContextMenu(event, project) {
             <i class="${isFavorite ? 'fas' : 'far'} fa-star"></i>
             <span>${isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}</span>
         </div>
+        <div class="context-menu-item is-disabled is-loading" data-action="change-artwork" data-disabled="true">
+            <i class="fas fa-image"></i>
+            <span>Scanning Project Artwork...</span>
+        </div>
         <div class="context-menu-divider"></div>
         <div class="context-menu-item" data-action="copy-path">
             <i class="fas fa-copy"></i>
@@ -609,9 +1615,14 @@ function showProjectContextMenu(event, project) {
         menu.style.top = (window.innerHeight - rect.height - 10) + 'px';
     }
 
+    void hydrateProjectArtworkContextMenuItem(menu, project);
+
     // Handle menu item clicks
     menu.querySelectorAll('.context-menu-item').forEach(item => {
         item.addEventListener('click', async () => {
+            if (item.dataset.disabled === 'true' || item.classList.contains('is-disabled')) {
+                return;
+            }
             const action = item.getAttribute('data-action');
             await handleContextMenuAction(action, project);
             menu.remove();
@@ -652,6 +1663,9 @@ async function handleContextMenuAction(action, project) {
             break;
         case 'favorite':
             await toggleProjectFavorite(project);
+            break;
+        case 'change-artwork':
+            await changeProjectArtworkFromContext(project);
             break;
         case 'copy-path':
             navigator.clipboard.writeText(project.path);
@@ -1143,6 +2157,7 @@ async function loadAllProjects(options = {}) {
     if (force) {
         pathExistsCache.clear();
         gitRepositoryCache.clear();
+        projectArtworkCache.clear();
     }
 
     try {
@@ -1151,6 +2166,7 @@ async function loadAllProjects(options = {}) {
         const shouldShowLoading = showLoading && (!hasRenderedProjects || force);
 
         if (shouldShowLoading) {
+            projectsList.setAttribute('aria-busy', 'true');
             projectsList.innerHTML = '<div class="loading"><span class="spinner"></span><span class="loading-text">Loading projects...</span></div>';
         }
 
@@ -1173,6 +2189,7 @@ async function loadAllProjects(options = {}) {
         markGitProjectsDropdownCacheStale();
         markIndexedSearchStale(requestedWorkspacePath);
 
+        projectsList.removeAttribute('aria-busy');
         if (projects.length === 0) {
             projectsList.innerHTML = `
                 <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
@@ -2244,9 +3261,16 @@ document.getElementById('gh-result-close')?.addEventListener('click', () => {
 });
 
 // Update status message
-function updateStatusMessage(message) {
+function updateStatusMessage(message, options = {}) {
+    if (typeof setStatusTransientMessage === 'function') {
+        setStatusTransientMessage(message, options);
+        return;
+    }
+
     const statusMessageEl = document.getElementById('status-message');
-    if (!statusMessageEl) return;
+    if (!statusMessageEl) {
+        return;
+    }
 
     statusMessageEl.textContent = message;
 

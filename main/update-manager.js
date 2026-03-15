@@ -12,6 +12,9 @@ const GITHUB_API_VERSION = '2022-11-28';
 const GITHUB_REQUEST_TIMEOUT_MS = 15000;
 const MAX_RELEASE_RESPONSE_BYTES = 3 * 1024 * 1024;
 const MAX_RELEASE_NOTES_LENGTH = 12000;
+const TEST_UPDATE_DOWNLOAD_URL = 'https://ash-speed.hetzner.com/1GB.bin';
+const TEST_DOWNLOAD_TIMEOUT_MS = 30 * 60 * 1000;
+const TEST_DOWNLOAD_MAX_REDIRECTS = 5;
 
 class UpdateManager {
   constructor({ logger, app, BrowserWindow }) {
@@ -22,6 +25,9 @@ class UpdateManager {
     this.initialized = false;
     this.disabledReason = '';
     this.channel = 'stable';
+    this.checkForUpdatesInFlight = null;
+    this.downloadUpdateInFlight = null;
+    this.downloadTestInFlight = null;
 
     this.state = {
       supported: false,
@@ -681,6 +687,7 @@ class UpdateManager {
       this.setState({
         supported: true,
         checking: false,
+        downloadProgress: 0,
         error: message
       });
       this.logger?.warn('Auto-update error', { error: message });
@@ -729,50 +736,62 @@ class UpdateManager {
   }
 
   async checkForUpdates() {
-    if (!this.autoUpdater || !this.state.supported) {
-      return this.runManualReleaseCheck();
+    if (this.checkForUpdatesInFlight) {
+      return this.checkForUpdatesInFlight;
     }
 
+    this.checkForUpdatesInFlight = (async () => {
+      if (!this.autoUpdater || !this.state.supported) {
+        return this.runManualReleaseCheck();
+      }
+
+      try {
+        await this.autoUpdater.checkForUpdates();
+        const automaticState = this.getState();
+
+        // Verify the latest release tag from GitHub when auto-updater reports no update.
+        if (!automaticState.available) {
+          const manualResult = await this.runManualReleaseCheck({ preserveSupported: true });
+          if (manualResult.success && manualResult.state?.available) {
+            this.logger?.info('GitHub release tag indicates a newer version than automatic updater feed', {
+              latestVersion: manualResult.state.latestVersion,
+              currentVersion: this.state.currentVersion
+            });
+            return this.applyManualOnlyUpdateState(manualResult.state);
+          }
+
+          if (!manualResult.success) {
+            this.logger?.warn('Failed to verify GitHub release tags after automatic update check', {
+              error: manualResult.error || 'Unknown release verification error'
+            });
+            this.setState({ ...automaticState, error: '' });
+          }
+        }
+
+        return { success: true, state: this.getState() };
+      } catch (error) {
+        const message = error?.message || 'Failed to check for updates';
+        this.logger?.warn('Automatic update check failed; trying GitHub release fallback', {
+          error: message
+        });
+
+        const fallbackResult = await this.runManualReleaseCheck({ preserveSupported: true });
+        if (fallbackResult.success) {
+          if (fallbackResult.state?.available) {
+            return this.applyManualOnlyUpdateState(fallbackResult.state);
+          }
+          return fallbackResult;
+        }
+
+        this.setState({ checking: false, error: message });
+        return { success: false, state: this.getState(), error: fallbackResult.error || message };
+      }
+    })();
+
     try {
-      await this.autoUpdater.checkForUpdates();
-      const automaticState = this.getState();
-
-      // Verify the latest release tag from GitHub when auto-updater reports no update.
-      if (!automaticState.available) {
-        const manualResult = await this.runManualReleaseCheck({ preserveSupported: true });
-        if (manualResult.success && manualResult.state?.available) {
-          this.logger?.info('GitHub release tag indicates a newer version than automatic updater feed', {
-            latestVersion: manualResult.state.latestVersion,
-            currentVersion: this.state.currentVersion
-          });
-          return this.applyManualOnlyUpdateState(manualResult.state);
-        }
-
-        if (!manualResult.success) {
-          this.logger?.warn('Failed to verify GitHub release tags after automatic update check', {
-            error: manualResult.error || 'Unknown release verification error'
-          });
-          this.setState({ ...automaticState, error: '' });
-        }
-      }
-
-      return { success: true, state: this.getState() };
-    } catch (error) {
-      const message = error?.message || 'Failed to check for updates';
-      this.logger?.warn('Automatic update check failed; trying GitHub release fallback', {
-        error: message
-      });
-
-      const fallbackResult = await this.runManualReleaseCheck({ preserveSupported: true });
-      if (fallbackResult.success) {
-        if (fallbackResult.state?.available) {
-          return this.applyManualOnlyUpdateState(fallbackResult.state);
-        }
-        return fallbackResult;
-      }
-
-      this.setState({ checking: false, error: message });
-      return { success: false, state: this.getState(), error: fallbackResult.error || message };
+      return await this.checkForUpdatesInFlight;
+    } finally {
+      this.checkForUpdatesInFlight = null;
     }
   }
 
@@ -832,26 +851,275 @@ class UpdateManager {
     }
   }
 
-  async downloadUpdate() {
-    if (!this.autoUpdater || !this.state.supported) {
-      return {
-        success: false,
-        state: this.getState(),
-        error: this.getAutomaticUpdateUnavailableError()
-      };
+  resolveTestDownloadUrl(downloadUrl) {
+    const candidate = typeof downloadUrl === 'string' && downloadUrl.trim()
+      ? downloadUrl.trim()
+      : TEST_UPDATE_DOWNLOAD_URL;
+
+    let parsed;
+    try {
+      parsed = new URL(candidate);
+    } catch {
+      throw new Error('Invalid test download URL.');
     }
 
-    if (!this.state.available) {
-      return { success: false, state: this.getState(), error: 'No update is available to download.' };
+    if (parsed.protocol !== 'https:') {
+      throw new Error('Test download URL must use HTTPS.');
     }
+
+    return parsed.toString();
+  }
+
+  buildTestDownloadTargetPath(downloadUrl) {
+    const parsedUrl = new URL(downloadUrl);
+    const extensionCandidate = path.extname(parsedUrl.pathname || '');
+    const extension = (extensionCandidate && extensionCandidate.length <= 10) ? extensionCandidate : '.bin';
+    const timestamp = new Date().toISOString().replace(/[-:.TZ]/g, '');
+    const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const fileName = `appmanager-update-test-${timestamp}-${randomSuffix}${extension}`;
+    return path.join(this.app.getPath('temp'), 'AppManager', 'update-download-tests', fileName);
+  }
+
+  async downloadFileWithProgress(downloadUrl, targetPath, redirectCount = 0) {
+    return new Promise((resolve, reject) => {
+      const request = https.get(downloadUrl, {
+        headers: {
+          'User-Agent': `ProjectManagerPro-Updater/${this.state.currentVersion || this.app.getVersion() || '0.0.0'}`
+        }
+      }, (response) => {
+        const statusCode = response.statusCode || 0;
+
+        if ([301, 302, 303, 307, 308].includes(statusCode) && response.headers.location) {
+          response.resume();
+          if (redirectCount >= TEST_DOWNLOAD_MAX_REDIRECTS) {
+            reject(new Error('Test download redirected too many times.'));
+            return;
+          }
+
+          let redirectedUrl = '';
+          try {
+            redirectedUrl = new URL(response.headers.location, downloadUrl).toString();
+          } catch {
+            reject(new Error('Test download redirect URL is invalid.'));
+            return;
+          }
+
+          this.downloadFileWithProgress(redirectedUrl, targetPath, redirectCount + 1)
+            .then(resolve)
+            .catch(reject);
+          return;
+        }
+
+        if (statusCode < 200 || statusCode >= 300) {
+          response.resume();
+          reject(new Error(`Test download failed with HTTP ${statusCode}.`));
+          return;
+        }
+
+        const contentLengthHeader = response.headers['content-length'];
+        const totalBytesRaw = Number.parseInt(Array.isArray(contentLengthHeader) ? contentLengthHeader[0] : contentLengthHeader, 10);
+        const totalBytes = Number.isFinite(totalBytesRaw) && totalBytesRaw > 0 ? totalBytesRaw : 0;
+        const fileStream = fs.createWriteStream(targetPath);
+        let downloadedBytes = 0;
+        let lastReportedPercent = -1;
+        let settled = false;
+
+        const finalizeWithError = (error) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+
+          try {
+            response.destroy();
+          } catch {
+            // no-op
+          }
+
+          try {
+            fileStream.destroy();
+          } catch {
+            // no-op
+          }
+
+          fs.promises.unlink(targetPath)
+            .catch(() => undefined)
+            .finally(() => {
+              reject(error instanceof Error ? error : new Error(String(error || 'Test download failed')));
+            });
+        };
+
+        const publishProgress = (force = false) => {
+          if (totalBytes <= 0) {
+            return;
+          }
+
+          const percent = Math.max(0, Math.min(100, (downloadedBytes / totalBytes) * 100));
+          const floored = Math.floor(percent);
+          if (!force && floored === lastReportedPercent) {
+            return;
+          }
+
+          lastReportedPercent = floored;
+          this.setState({
+            checking: false,
+            downloaded: false,
+            downloadProgress: percent,
+            error: ''
+          });
+        };
+
+        response.on('data', (chunk) => {
+          downloadedBytes += chunk.length;
+          publishProgress(false);
+        });
+
+        response.on('error', (error) => {
+          finalizeWithError(error);
+        });
+
+        fileStream.on('error', (error) => {
+          finalizeWithError(error);
+        });
+
+        fileStream.on('finish', () => {
+          fileStream.close(() => {
+            if (settled) {
+              return;
+            }
+            settled = true;
+            publishProgress(true);
+            resolve({
+              url: downloadUrl,
+              targetPath,
+              bytesDownloaded: downloadedBytes,
+              totalBytes
+            });
+          });
+        });
+
+        response.pipe(fileStream);
+      });
+
+      request.setTimeout(TEST_DOWNLOAD_TIMEOUT_MS, () => {
+        request.destroy(new Error('Test download timed out.'));
+      });
+
+      request.on('error', (error) => {
+        reject(error);
+      });
+    });
+  }
+
+  async downloadTestUpdate(downloadUrl = TEST_UPDATE_DOWNLOAD_URL) {
+    if (this.downloadTestInFlight) {
+      return this.downloadTestInFlight;
+    }
+
+    this.downloadTestInFlight = (async () => {
+      if (this.downloadUpdateInFlight) {
+        return {
+          success: false,
+          state: this.getState(),
+          error: 'Another update download is already in progress.'
+        };
+      }
+
+      let resolvedUrl = '';
+      try {
+        resolvedUrl = this.resolveTestDownloadUrl(downloadUrl);
+      } catch (error) {
+        const message = error?.message || 'Invalid test download URL.';
+        return { success: false, state: this.getState(), error: message };
+      }
+
+      const targetPath = this.buildTestDownloadTargetPath(resolvedUrl);
+
+      try {
+        await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
+        this.setState({
+          checking: false,
+          downloaded: false,
+          downloadProgress: 0,
+          lastCheckedAt: new Date().toISOString(),
+          error: ''
+        });
+
+        const downloadResult = await this.downloadFileWithProgress(resolvedUrl, targetPath);
+        this.setState({
+          checking: false,
+          downloaded: false,
+          downloadProgress: 100,
+          error: ''
+        });
+
+        return {
+          success: true,
+          state: this.getState(),
+          downloadPath: downloadResult.targetPath,
+          bytesDownloaded: downloadResult.bytesDownloaded,
+          totalBytes: downloadResult.totalBytes,
+          url: downloadResult.url
+        };
+      } catch (error) {
+        const message = error?.message || 'Failed to download test package.';
+        this.setState({
+          checking: false,
+          downloaded: false,
+          downloadProgress: 0,
+          error: message
+        });
+        return { success: false, state: this.getState(), error: message, url: resolvedUrl };
+      }
+    })();
 
     try {
-      await this.autoUpdater.downloadUpdate();
-      return { success: true, state: this.getState() };
-    } catch (error) {
-      const message = error?.message || 'Failed to download update';
-      this.setState({ error: message });
-      return { success: false, state: this.getState(), error: message };
+      return await this.downloadTestInFlight;
+    } finally {
+      this.downloadTestInFlight = null;
+    }
+  }
+
+  async downloadUpdate() {
+    if (this.downloadUpdateInFlight) {
+      return this.downloadUpdateInFlight;
+    }
+
+    this.downloadUpdateInFlight = (async () => {
+      if (this.downloadTestInFlight) {
+        return {
+          success: false,
+          state: this.getState(),
+          error: 'A test download is currently in progress.'
+        };
+      }
+
+      if (!this.autoUpdater || !this.state.supported) {
+        return {
+          success: false,
+          state: this.getState(),
+          error: this.getAutomaticUpdateUnavailableError()
+        };
+      }
+
+      if (!this.state.available) {
+        return { success: false, state: this.getState(), error: 'No update is available to download.' };
+      }
+
+      try {
+        await this.autoUpdater.downloadUpdate();
+        return { success: true, state: this.getState() };
+      } catch (error) {
+        const message = error?.message || 'Failed to download update';
+        this.setState({ error: message });
+        return { success: false, state: this.getState(), error: message };
+      }
+    })();
+
+    try {
+      return await this.downloadUpdateInFlight;
+    } finally {
+      this.downloadUpdateInFlight = null;
     }
   }
 

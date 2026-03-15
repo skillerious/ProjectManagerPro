@@ -1,0 +1,22 @@
+{
+  "id": "gruvbox-dark",
+  "name": "Gruvbox Dark",
+  "displayName": "Gruvbox Dark",
+  "description": "A retro groove color scheme with warm earthy tones. Inspired by vintage terminal aesthetics with rich amber, burnt orange, and olive accents on a soft charcoal canvas.",
+  "author": "morhetz",
+  "version": "2.3.0",
+  "category": "themes",
+  "type": "themes",
+  "main": "theme.css",
+  "icon": "fa-fire",
+  "rating": 4.8,
+  "downloads": 3400000,
+  "tags": ["dark", "retro", "warm", "gruvbox", "earthy"],
+  "colors": ["#282828", "#fe8019", "#fabd2f", "#b8bb26", "#83a598", "#fb4934"],
+  "preview": {
+    "background": "#282828",
+    "accent": "#fe8019",
+    "secondary": "#fabd2f",
+    "palette": ["#282828", "#fe8019", "#fabd2f", "#b8bb26", "#83a598", "#fb4934"]
+  }
+}

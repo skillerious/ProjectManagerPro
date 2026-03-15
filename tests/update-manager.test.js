@@ -72,3 +72,18 @@ test('normalizeReleaseNotes trims and limits long release notes', () => {
   assert.equal(normalized.length, 12000);
   assert.equal(normalized.startsWith('x'), true);
 });
+
+test('resolveTestDownloadUrl defaults to the temporary HTTPS test package', () => {
+  const manager = createManager();
+  const resolved = manager.resolveTestDownloadUrl('');
+
+  assert.equal(resolved, 'https://ash-speed.hetzner.com/1GB.bin');
+});
+
+test('resolveTestDownloadUrl rejects non-https test URLs', () => {
+  const manager = createManager();
+  assert.throws(
+    () => manager.resolveTestDownloadUrl('http://example.com/file.bin'),
+    /must use HTTPS/
+  );
+});

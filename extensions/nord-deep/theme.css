@@ -1,0 +1,55 @@
+/* ============================================
+   Nord Deep
+   Arctic-inspired polar night theme
+   Author: Arctic Ice Studio
+   ============================================ */
+
+:root {
+  --bg-primary: #2e3440;
+  --bg-secondary: #272c36;
+  --bg-tertiary: #3b4252;
+  --bg-hover: #434c5e;
+  --text-primary: #d8dee9;
+  --text-secondary: #7b88a1;
+  --text-highlight: #eceff4;
+  --accent-primary: #88c0d0;
+  --accent-secondary: #81a1c1;
+  --accent-hover: #6fb3c2;
+  --border-color: #4c566a;
+  --success: #a3be8c;
+  --warning: #ebcb8b;
+  --error: #bf616a;
+  --info: #5e81ac;
+}
+
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 20px rgba(136, 192, 208, 0.14);
+}
+
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: #2e3440;
+}
+
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

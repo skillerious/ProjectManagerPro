@@ -1,0 +1,22 @@
+{
+  "id": "ayu-dark",
+  "name": "Ayu Dark",
+  "displayName": "Ayu Dark",
+  "description": "A simple, bright and elegant theme with carefully selected warm colors. Clean lines and golden amber accents create a refined, distraction-free coding environment.",
+  "author": "Ayu",
+  "version": "3.0.0",
+  "category": "themes",
+  "type": "themes",
+  "main": "theme.css",
+  "icon": "fa-sun",
+  "rating": 4.7,
+  "downloads": 1800000,
+  "tags": ["dark", "warm", "minimal", "elegant"],
+  "colors": ["#0b0e14", "#e6b450", "#ffb454", "#7fd962", "#39bae6", "#d95757"],
+  "preview": {
+    "background": "#0b0e14",
+    "accent": "#e6b450",
+    "secondary": "#ffb454",
+    "palette": ["#0b0e14", "#e6b450", "#ffb454", "#7fd962", "#39bae6", "#d95757"]
+  }
+}

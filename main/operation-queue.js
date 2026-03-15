@@ -71,6 +71,7 @@ function sanitizePersistedJobs(inputJobs) {
   }
 
   const sanitized = [];
+  const seenIds = new Set();
   for (const rawJob of inputJobs) {
     if (sanitized.length >= MAX_PERSISTED_JOBS) {
       break;
@@ -83,10 +84,15 @@ function sanitizePersistedJobs(inputJobs) {
     const rawStatus = typeof rawJob.status === 'string' ? rawJob.status : 'queued';
     const normalizedStatus = VALID_STATUSES.has(rawStatus) ? rawStatus : 'queued';
     const hydratedStatus = normalizedStatus === 'running' ? 'queued' : normalizedStatus;
+    const normalizedId = normalizeJobId(rawJob.id);
+    const jobId = normalizedId && !seenIds.has(normalizedId)
+      ? normalizedId
+      : crypto.randomUUID();
     const now = new Date().toISOString();
+    seenIds.add(jobId);
 
     sanitized.push({
-      id: typeof rawJob.id === 'string' && rawJob.id.trim() ? rawJob.id.trim() : crypto.randomUUID(),
+      id: jobId,
       type: typeof rawJob.type === 'string' ? rawJob.type.trim() : '',
       payload: isPlainObject(rawJob.payload)
         ? cloneSerializable(rawJob.payload, {})
@@ -215,12 +221,23 @@ class OperationQueue extends EventEmitter {
       updatedAt: new Date().toISOString(),
       jobs: this.getSnapshot().slice(0, MAX_PERSISTED_JOBS)
     }, null, 2);
-    const tempPath = `${this.persistencePath}.${process.pid}.${Date.now()}.tmp`;
+    const tempPath = `${this.persistencePath}.${crypto.randomUUID()}.tmp`;
 
     this.persistenceWriteInFlight = true;
     fs.promises.mkdir(path.dirname(this.persistencePath), { recursive: true })
       .then(() => fs.promises.writeFile(tempPath, payload, 'utf8'))
-      .then(() => fs.promises.rename(tempPath, this.persistencePath))
+      .then(async () => {
+        try {
+          await fs.promises.rename(tempPath, this.persistencePath);
+        } catch (error) {
+          if (['EEXIST', 'EPERM', 'EXDEV'].includes(error?.code)) {
+            await fs.promises.writeFile(this.persistencePath, payload, 'utf8');
+            await fs.promises.unlink(tempPath).catch(() => {});
+            return;
+          }
+          throw error;
+        }
+      })
       .catch((error) => {
         fs.promises.unlink(tempPath).catch(() => {});
         this.logger?.warn('Failed to persist operation queue snapshot', {
@@ -331,6 +348,15 @@ class OperationQueue extends EventEmitter {
       return;
     }
 
+    // Check if job was cancelled between finding it and starting it
+    if (nextJob.cancelled) {
+      nextJob.status = 'cancelled';
+      nextJob.updatedAt = new Date().toISOString();
+      this.emitUpdate();
+      setImmediate(() => this.processNext());
+      return;
+    }
+
     this.running = true;
     nextJob.status = 'running';
     nextJob.attempts += 1;
@@ -381,6 +407,12 @@ class OperationQueue extends EventEmitter {
       this.emitUpdate();
       setImmediate(() => this.processNext());
     }
+  }
+
+  destroy() {
+    this.running = false;
+    this.removeAllListeners();
+    this.runners.clear();
   }
 }
 

@@ -1,0 +1,54 @@
+/* ============================================
+   SynthWave '84
+   Retro-futuristic neon theme
+   Author: Robb Owen
+   ============================================ */
+
+:root {
+  --bg-primary: #262335;
+  --bg-secondary: #1e1a31;
+  --bg-tertiary: #34294f;
+  --bg-hover: #2f2752;
+  --text-primary: #e0d9f6;
+  --text-secondary: #9d8dc7;
+  --text-highlight: #fff;
+  --accent-primary: #ff7edb;
+  --accent-secondary: #36f9f6;
+  --accent-hover: #e66cc5;
+  --border-color: #4a3a6a;
+  --success: #72f1b8;
+  --warning: #fede5d;
+  --error: #fe4450;
+  --info: #36f9f6;
+}
+
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 25px rgba(255, 126, 219, 0.2);
+}
+
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

@@ -1,0 +1,55 @@
+/* ============================================
+   Vesper
+   Warm amber twilight theme
+   Author: Rauno Freiberg
+   ============================================ */
+
+:root {
+  --bg-primary: #101010;
+  --bg-secondary: #0a0a0a;
+  --bg-tertiary: #1a1a1a;
+  --bg-hover: #232323;
+  --text-primary: #b8b8b8;
+  --text-secondary: #6a6a6a;
+  --text-highlight: #e0d0c0;
+  --accent-primary: #ffc799;
+  --accent-secondary: #d4a37a;
+  --accent-hover: #e8b080;
+  --border-color: #282828;
+  --success: #99ffe4;
+  --warning: #ffca85;
+  --error: #ff6f6f;
+  --info: #82d4bb;
+}
+
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 20px rgba(255, 199, 153, 0.12);
+}
+
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: #101010;
+}
+
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

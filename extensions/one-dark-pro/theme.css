@@ -1,0 +1,54 @@
+/* ============================================
+   One Dark Pro
+   Atom's iconic One Dark theme
+   Author: binaryify
+   ============================================ */
+
+:root {
+  --bg-primary: #282c34;
+  --bg-secondary: #21252b;
+  --bg-tertiary: #2c313a;
+  --bg-hover: #333842;
+  --text-primary: #abb2bf;
+  --text-secondary: #636d83;
+  --text-highlight: #d7dae0;
+  --accent-primary: #61afef;
+  --accent-secondary: #c678dd;
+  --accent-hover: #4d9de0;
+  --border-color: #3e4452;
+  --success: #98c379;
+  --warning: #e5c07b;
+  --error: #e06c75;
+  --info: #56b6c2;
+}
+
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 20px rgba(97, 175, 239, 0.14);
+}
+
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

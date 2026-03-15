@@ -1,0 +1,22 @@
+{
+  "id": "dracula-pro",
+  "name": "Dracula Pro",
+  "displayName": "Dracula Pro",
+  "description": "The iconic dark theme refined to perfection. Deep vampire-purple backgrounds with signature Dracula palette — pink, cyan, green, and orange — crafted for ultimate clarity.",
+  "author": "Zeno Rocha",
+  "version": "4.0.0",
+  "category": "themes",
+  "type": "themes",
+  "main": "theme.css",
+  "icon": "fa-ghost",
+  "rating": 4.9,
+  "downloads": 5100000,
+  "tags": ["dark", "purple", "iconic", "dracula", "popular"],
+  "colors": ["#282a36", "#ff79c6", "#8be9fd", "#50fa7b", "#f1fa8c", "#ff5555"],
+  "preview": {
+    "background": "#282a36",
+    "accent": "#ff79c6",
+    "secondary": "#bd93f9",
+    "palette": ["#282a36", "#ff79c6", "#bd93f9", "#50fa7b", "#f1fa8c", "#ff5555"]
+  }
+}

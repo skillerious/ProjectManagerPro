@@ -90,6 +90,32 @@ test('operation queue persists and reloads job snapshots', async () => {
   assert.deepEqual(restored.payload, { attempt: 1 });
 });
 
+test('operation queue sanitizes duplicate or invalid persisted job ids', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'appmanager-queue-sanitize-'));
+  const persistencePath = path.join(root, 'operation-queue.json');
+  const now = new Date().toISOString();
+
+  await fs.writeFile(persistencePath, JSON.stringify({
+    version: 1,
+    updatedAt: now,
+    jobs: [
+      { id: ' duplicate-id ', type: 'noop', status: 'running', payload: { index: 1 }, createdAt: now, updatedAt: now },
+      { id: 'duplicate-id', type: 'noop', status: 'failed', payload: { index: 2 }, createdAt: now, updatedAt: now },
+      { id: 'bad\nid', type: 'noop', status: 'completed', payload: { index: 3 }, createdAt: now, updatedAt: now }
+    ]
+  }, null, 2), 'utf8');
+
+  const queue = new OperationQueue({ persistencePath });
+  const snapshot = queue.getSnapshot();
+
+  assert.equal(snapshot.length, 3);
+  assert.equal(snapshot[0].status, 'queued');
+  assert.equal(snapshot[1].status, 'failed');
+  assert.equal(snapshot[2].status, 'completed');
+  assert.equal(new Set(snapshot.map((job) => job.id)).size, snapshot.length);
+  assert.equal(snapshot.some((job) => /[\r\n]/.test(job.id)), false);
+});
+
 test('operation queue snapshots do not leak mutable references', async () => {
   const queue = new OperationQueue();
   queue.registerRunner('noop', async () => ({ success: true }));
@@ -148,4 +174,53 @@ test('operation queue prunes old terminal jobs before enqueueing new work', () =
   assert.equal(queue.jobs.length, 2000);
   assert.equal(queue.jobs.some((job) => job.id === 'done-1999'), false);
   assert.equal(queue.jobs[0].id, enqueued.id);
+});
+
+test('operation queue cancels a queued job before it runs', async () => {
+  const queue = new OperationQueue();
+  let ran = false;
+  queue.registerRunner('work', async () => {
+    ran = true;
+    return { success: true };
+  });
+
+  // Prevent auto-processing so we can cancel before the job starts
+  queue.running = true;
+  const enqueued = queue.enqueue('work', { task: 'cancel-me' });
+  assert.equal(enqueued.status, 'queued');
+
+  const cancelResult = queue.cancel(enqueued.id);
+  assert.equal(cancelResult.success, true);
+
+  const job = queue.findJob(enqueued.id);
+  assert.equal(job.status, 'cancelled');
+  assert.equal(job.cancelled, true);
+  assert.equal(ran, false);
+});
+
+test('operation queue runner exception results in failed status', async () => {
+  const queue = new OperationQueue();
+  queue.registerRunner('crasher', async () => {
+    throw new Error('Unexpected crash');
+  });
+
+  const enqueued = queue.enqueue('crasher', {});
+  const failed = await waitForJobStatus(queue, enqueued.id, 'failed');
+  assert.equal(failed.status, 'failed');
+  assert.match(failed.error, /unexpected crash/i);
+});
+
+test('operation queue destroy cleans up runners and listeners', () => {
+  const queue = new OperationQueue();
+  queue.registerRunner('work', async () => ({ success: true }));
+  let updateCount = 0;
+  queue.on('updated', () => { updateCount += 1; });
+
+  queue.destroy();
+  assert.equal(queue.runners.size, 0);
+  assert.equal(queue.running, false);
+
+  // After destroy, emitting should not trigger listeners
+  queue.emit('updated', []);
+  assert.equal(updateCount, 0);
 });

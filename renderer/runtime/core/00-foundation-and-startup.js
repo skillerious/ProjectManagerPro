@@ -166,6 +166,8 @@ function processLegacyInlineActionNode(node) {
     node.querySelectorAll('[onclick]').forEach((target) => bindLegacyInlineAction(target));
 }
 
+let legacyInlineActionObserver = null;
+
 function initializeLegacyInlineActionBridge() {
     if (legacyInlineActionBridgeInstalled) {
         return;
@@ -174,13 +176,20 @@ function initializeLegacyInlineActionBridge() {
     legacyInlineActionBridgeInstalled = true;
     processLegacyInlineActionNode(document.body);
 
-    const observer = new MutationObserver((mutations) => {
+    legacyInlineActionObserver = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             mutation.addedNodes.forEach((node) => processLegacyInlineActionNode(node));
         });
     });
 
-    observer.observe(document.body, { childList: true, subtree: true });
+    legacyInlineActionObserver.observe(document.body, { childList: true, subtree: true });
+
+    window.addEventListener('beforeunload', () => {
+        if (legacyInlineActionObserver) {
+            legacyInlineActionObserver.disconnect();
+            legacyInlineActionObserver = null;
+        }
+    }, { once: true });
 }
 
 let appInitializationPromise = null;
@@ -190,6 +199,9 @@ async function initializeAppIfNeeded() {
         return appInitializationPromise;
     }
 
+    // Do NOT reset the promise on error — re-running initialization would
+    // duplicate event listeners and IPC handlers. The catch inside
+    // initializeApp() already handles partial failures gracefully.
     appInitializationPromise = (async () => {
         const runtimeBootPromise = window.__APP_MANAGER_RUNTIME_BOOT_PROMISE;
         if (runtimeBootPromise && typeof runtimeBootPromise.then === 'function') {
@@ -197,10 +209,7 @@ async function initializeAppIfNeeded() {
         }
 
         await initializeApp();
-    })().catch((error) => {
-        appInitializationPromise = null;
-        throw error;
-    });
+    })();
 
     return appInitializationPromise;
 }
@@ -272,6 +281,7 @@ async function initializeApp() {
         initializeCommandPalette();
         initializeKeyboardShortcuts();
         initializeAboutDialog();
+        initializeReportDialog();
         initializeGitHubAvatarHoverPreview();
         initializeProjectsView();
         initializeRecentView();
@@ -295,6 +305,9 @@ async function initializeApp() {
         initializeStatusBar();
         await loadWorkspacePath();
         loadFavoriteProjectsState();
+        if (typeof loadProjectArtworkSelectionState === 'function') {
+            loadProjectArtworkSelectionState();
+        }
         await loadRecentProjects();
         await checkVSCodeInstallation();
 
@@ -449,4 +462,3 @@ async function showFirstRunWizardIfNeeded() {
 }
 
 // Titlebar functionality
-

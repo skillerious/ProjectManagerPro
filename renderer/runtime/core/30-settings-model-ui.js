@@ -50,6 +50,13 @@ function getSettingsDefaults() {
         terminalApp: 'cmd',
         showWelcome: true,
         closeToTray: false,
+        launchOnStartup: false,
+        reopenLastWorkspace: true,
+        minimizeToTray: false,
+        notificationsEnabled: true,
+        statusTimeFormat: 'system',
+        defaultProjectPrefix: '',
+        defaultProjectTemplate: 'blank',
         autoRefreshInterval: 2000,
         enableFileWatcher: true,
         recentProjectsLimit: 10,
@@ -59,25 +66,58 @@ function getSettingsDefaults() {
         uiScale: 100,
         smoothScrolling: true,
         animationsEnabled: true,
+        compactMode: false,
+        showStatusBar: true,
+        denseSidebar: false,
+        reducedTransparency: false,
+        highVisibilityFocus: false,
         editorPath: '',
         editorArgs: '',
+        editorOpenMode: 'new-window',
+        revealInExplorer: true,
+        preserveEditorFocus: false,
+        editorWordWrap: 'off',
+        editorTabSize: 4,
+        editorFormatOnOpen: false,
+        editorTrimTrailingWhitespace: false,
         openReadme: true,
         createGitignore: true,
         terminalPath: '',
         terminalCwd: true,
         terminalAdmin: false,
+        terminalFontSize: 13,
+        terminalScrollback: 5000,
+        terminalConfirmOnClose: true,
+        terminalShellArgs: '',
+        terminalUseLoginShell: false,
         gitPath: '',
         gitUsername: '',
         gitEmail: '',
         gitAutoInit: true,
         gitAutoFetch: false,
+        gitPruneOnFetch: true,
+        gitUsePullRebase: false,
+        gitConfirmForcePush: true,
+        gitAutoStash: false,
+        gitFetchInterval: 5,
+        gitSignCommits: false,
+        gitRequireMessage: true,
         defaultBranch: 'main',
         autoUpdateExtensions: true,
         extensionRecommendations: true,
         extensionUpdateCheck: 'daily',
+        extensionsAllowPrerelease: false,
+        extensionsTrustMarketplaceOnly: true,
+        extensionsAutoEnableWorkspaceRecommendations: true,
         maxWorkers: 4,
         hardwareAcceleration: true,
         cacheSize: 200,
+        diagnosticsRetentionDays: 30,
+        telemetryEnabled: false,
+        crashReportingEnabled: true,
+        safeModeOnStartup: false,
+        startupTimeoutMs: 15000,
+        backupRetentionDays: 14,
         devTools: false,
         verboseLogging: false,
         extensions: {
@@ -137,6 +177,19 @@ function normalizeSettings(settingsInput = {}) {
             : defaults.terminalApp,
         showWelcome: typeof source.showWelcome === 'boolean' ? source.showWelcome : defaults.showWelcome,
         closeToTray: typeof source.closeToTray === 'boolean' ? source.closeToTray : defaults.closeToTray,
+        launchOnStartup: typeof source.launchOnStartup === 'boolean' ? source.launchOnStartup : defaults.launchOnStartup,
+        reopenLastWorkspace: typeof source.reopenLastWorkspace === 'boolean' ? source.reopenLastWorkspace : defaults.reopenLastWorkspace,
+        minimizeToTray: typeof source.minimizeToTray === 'boolean' ? source.minimizeToTray : defaults.minimizeToTray,
+        notificationsEnabled: typeof source.notificationsEnabled === 'boolean' ? source.notificationsEnabled : defaults.notificationsEnabled,
+        statusTimeFormat: typeof source.statusTimeFormat === 'string' && SETTINGS_STATUS_TIME_FORMATS.has(source.statusTimeFormat)
+            ? source.statusTimeFormat
+            : defaults.statusTimeFormat,
+        defaultProjectPrefix: typeof source.defaultProjectPrefix === 'string'
+            ? source.defaultProjectPrefix.trim().slice(0, 64)
+            : defaults.defaultProjectPrefix,
+        defaultProjectTemplate: typeof source.defaultProjectTemplate === 'string' && SETTINGS_DEFAULT_PROJECT_TEMPLATES.has(source.defaultProjectTemplate)
+            ? source.defaultProjectTemplate
+            : defaults.defaultProjectTemplate,
         autoRefreshInterval: clampSettingsNumber(source.autoRefreshInterval, 500, 60000, defaults.autoRefreshInterval),
         enableFileWatcher: typeof source.enableFileWatcher === 'boolean' ? source.enableFileWatcher : defaults.enableFileWatcher,
         recentProjectsLimit: clampSettingsNumber(source.recentProjectsLimit, 5, 50, defaults.recentProjectsLimit),
@@ -150,18 +203,52 @@ function normalizeSettings(settingsInput = {}) {
         uiScale: clampSettingsNumber(source.uiScale, 80, 150, defaults.uiScale),
         smoothScrolling: typeof source.smoothScrolling === 'boolean' ? source.smoothScrolling : defaults.smoothScrolling,
         animationsEnabled: typeof source.animationsEnabled === 'boolean' ? source.animationsEnabled : defaults.animationsEnabled,
+        compactMode: typeof source.compactMode === 'boolean' ? source.compactMode : defaults.compactMode,
+        showStatusBar: typeof source.showStatusBar === 'boolean' ? source.showStatusBar : defaults.showStatusBar,
+        denseSidebar: typeof source.denseSidebar === 'boolean' ? source.denseSidebar : defaults.denseSidebar,
+        reducedTransparency: typeof source.reducedTransparency === 'boolean' ? source.reducedTransparency : defaults.reducedTransparency,
+        highVisibilityFocus: typeof source.highVisibilityFocus === 'boolean' ? source.highVisibilityFocus : defaults.highVisibilityFocus,
         editorPath: typeof source.editorPath === 'string' ? source.editorPath.trim() : defaults.editorPath,
         editorArgs: typeof source.editorArgs === 'string' ? source.editorArgs.trim() : defaults.editorArgs,
+        editorOpenMode: typeof source.editorOpenMode === 'string' && SETTINGS_EDITOR_OPEN_MODES.has(source.editorOpenMode)
+            ? source.editorOpenMode
+            : defaults.editorOpenMode,
+        revealInExplorer: typeof source.revealInExplorer === 'boolean' ? source.revealInExplorer : defaults.revealInExplorer,
+        preserveEditorFocus: typeof source.preserveEditorFocus === 'boolean' ? source.preserveEditorFocus : defaults.preserveEditorFocus,
+        editorWordWrap: typeof source.editorWordWrap === 'string' && SETTINGS_EDITOR_WORD_WRAP.has(source.editorWordWrap)
+            ? source.editorWordWrap
+            : defaults.editorWordWrap,
+        editorTabSize: clampSettingsNumber(source.editorTabSize, 2, 8, defaults.editorTabSize),
+        editorFormatOnOpen: typeof source.editorFormatOnOpen === 'boolean' ? source.editorFormatOnOpen : defaults.editorFormatOnOpen,
+        editorTrimTrailingWhitespace: typeof source.editorTrimTrailingWhitespace === 'boolean'
+            ? source.editorTrimTrailingWhitespace
+            : defaults.editorTrimTrailingWhitespace,
         openReadme: typeof source.openReadme === 'boolean' ? source.openReadme : defaults.openReadme,
         createGitignore: typeof source.createGitignore === 'boolean' ? source.createGitignore : defaults.createGitignore,
         terminalPath: typeof source.terminalPath === 'string' ? source.terminalPath.trim() : defaults.terminalPath,
         terminalCwd: typeof source.terminalCwd === 'boolean' ? source.terminalCwd : defaults.terminalCwd,
         terminalAdmin: typeof source.terminalAdmin === 'boolean' ? source.terminalAdmin : defaults.terminalAdmin,
+        terminalFontSize: clampSettingsNumber(source.terminalFontSize, 10, 24, defaults.terminalFontSize),
+        terminalScrollback: clampSettingsNumber(source.terminalScrollback, 500, 100000, defaults.terminalScrollback),
+        terminalConfirmOnClose: typeof source.terminalConfirmOnClose === 'boolean'
+            ? source.terminalConfirmOnClose
+            : defaults.terminalConfirmOnClose,
+        terminalShellArgs: typeof source.terminalShellArgs === 'string' ? source.terminalShellArgs.trim().slice(0, 256) : defaults.terminalShellArgs,
+        terminalUseLoginShell: typeof source.terminalUseLoginShell === 'boolean'
+            ? source.terminalUseLoginShell
+            : defaults.terminalUseLoginShell,
         gitPath: typeof source.gitPath === 'string' ? source.gitPath.trim() : defaults.gitPath,
         gitUsername: typeof source.gitUsername === 'string' ? source.gitUsername.trim() : defaults.gitUsername,
         gitEmail: typeof source.gitEmail === 'string' ? source.gitEmail.trim() : defaults.gitEmail,
         gitAutoInit: typeof source.gitAutoInit === 'boolean' ? source.gitAutoInit : defaults.gitAutoInit,
         gitAutoFetch: typeof source.gitAutoFetch === 'boolean' ? source.gitAutoFetch : defaults.gitAutoFetch,
+        gitPruneOnFetch: typeof source.gitPruneOnFetch === 'boolean' ? source.gitPruneOnFetch : defaults.gitPruneOnFetch,
+        gitUsePullRebase: typeof source.gitUsePullRebase === 'boolean' ? source.gitUsePullRebase : defaults.gitUsePullRebase,
+        gitConfirmForcePush: typeof source.gitConfirmForcePush === 'boolean' ? source.gitConfirmForcePush : defaults.gitConfirmForcePush,
+        gitAutoStash: typeof source.gitAutoStash === 'boolean' ? source.gitAutoStash : defaults.gitAutoStash,
+        gitFetchInterval: clampSettingsNumber(source.gitFetchInterval, 1, 120, defaults.gitFetchInterval),
+        gitSignCommits: typeof source.gitSignCommits === 'boolean' ? source.gitSignCommits : defaults.gitSignCommits,
+        gitRequireMessage: typeof source.gitRequireMessage === 'boolean' ? source.gitRequireMessage : defaults.gitRequireMessage,
         defaultBranch: typeof source.defaultBranch === 'string' && source.defaultBranch.trim()
             ? source.defaultBranch.trim()
             : defaults.defaultBranch,
@@ -170,11 +257,26 @@ function normalizeSettings(settingsInput = {}) {
             ? source.extensionRecommendations
             : defaults.extensionRecommendations,
         extensionUpdateCheck: extensionUpdateIntervalCandidate,
+        extensionsAllowPrerelease: typeof source.extensionsAllowPrerelease === 'boolean'
+            ? source.extensionsAllowPrerelease
+            : defaults.extensionsAllowPrerelease,
+        extensionsTrustMarketplaceOnly: typeof source.extensionsTrustMarketplaceOnly === 'boolean'
+            ? source.extensionsTrustMarketplaceOnly
+            : defaults.extensionsTrustMarketplaceOnly,
+        extensionsAutoEnableWorkspaceRecommendations: typeof source.extensionsAutoEnableWorkspaceRecommendations === 'boolean'
+            ? source.extensionsAutoEnableWorkspaceRecommendations
+            : defaults.extensionsAutoEnableWorkspaceRecommendations,
         maxWorkers: clampSettingsNumber(source.maxWorkers, 1, 16, defaults.maxWorkers),
         hardwareAcceleration: typeof source.hardwareAcceleration === 'boolean'
             ? source.hardwareAcceleration
             : defaults.hardwareAcceleration,
         cacheSize: clampSettingsNumber(source.cacheSize, 50, 1000, defaults.cacheSize),
+        diagnosticsRetentionDays: clampSettingsNumber(source.diagnosticsRetentionDays, 1, 365, defaults.diagnosticsRetentionDays),
+        telemetryEnabled: typeof source.telemetryEnabled === 'boolean' ? source.telemetryEnabled : defaults.telemetryEnabled,
+        crashReportingEnabled: typeof source.crashReportingEnabled === 'boolean' ? source.crashReportingEnabled : defaults.crashReportingEnabled,
+        safeModeOnStartup: typeof source.safeModeOnStartup === 'boolean' ? source.safeModeOnStartup : defaults.safeModeOnStartup,
+        startupTimeoutMs: clampSettingsNumber(source.startupTimeoutMs, 2000, 120000, defaults.startupTimeoutMs),
+        backupRetentionDays: clampSettingsNumber(source.backupRetentionDays, 1, 90, defaults.backupRetentionDays),
         devTools: typeof source.devTools === 'boolean' ? source.devTools : defaults.devTools,
         verboseLogging: typeof source.verboseLogging === 'boolean' ? source.verboseLogging : defaults.verboseLogging
     };
@@ -223,6 +325,16 @@ function collectSettingsFromUi() {
         licenseUrl: getSettingInputValue('license-url'),
         showWelcome: getSettingInputValue('show-welcome'),
         closeToTray: getSettingInputValue('close-to-tray'),
+        launchOnStartup: getSettingInputValue('launch-on-startup'),
+        reopenLastWorkspace: getSettingInputValue('reopen-last-workspace'),
+        minimizeToTray: getSettingInputValue('minimize-to-tray'),
+        notificationsEnabled: getSettingInputValue('notifications-enabled'),
+        statusTimeFormat: getSettingInputValue('status-time-format'),
+        defaultProjectPrefix: getSettingInputValue('default-project-prefix'),
+        defaultProjectTemplate: getSettingInputValue('default-project-template'),
+        gitIntegration: getSettingInputValue('git-integration'),
+        autoRefreshInterval: getSettingInputValue('auto-refresh-interval'),
+        enableFileWatcher: getSettingInputValue('enable-file-watcher'),
         confirmDelete: getSettingInputValue('confirm-delete'),
         theme: getSettingInputValue('theme-select'),
         accentColor: getSettingInputValue('accent-color'),
@@ -233,26 +345,59 @@ function collectSettingsFromUi() {
         uiScale: getSettingInputValue('ui-scale'),
         smoothScrolling: getSettingInputValue('smooth-scrolling'),
         animationsEnabled: getSettingInputValue('animations-enabled'),
+        compactMode: getSettingInputValue('compact-mode'),
+        showStatusBar: getSettingInputValue('show-status-bar'),
+        denseSidebar: getSettingInputValue('dense-sidebar'),
+        reducedTransparency: getSettingInputValue('reduced-transparency'),
+        highVisibilityFocus: getSettingInputValue('high-visibility-focus'),
         editorPath: getSettingInputValue('editor-path'),
         editorArgs: getSettingInputValue('editor-args'),
+        editorOpenMode: getSettingInputValue('editor-open-mode'),
+        revealInExplorer: getSettingInputValue('reveal-in-explorer'),
+        preserveEditorFocus: getSettingInputValue('preserve-editor-focus'),
+        editorWordWrap: getSettingInputValue('editor-word-wrap'),
+        editorTabSize: getSettingInputValue('editor-tab-size'),
+        editorFormatOnOpen: getSettingInputValue('editor-format-on-open'),
+        editorTrimTrailingWhitespace: getSettingInputValue('editor-trim-trailing-whitespace'),
         openReadme: getSettingInputValue('open-readme'),
         createGitignore: getSettingInputValue('create-gitignore'),
         terminalApp: getSettingInputValue('terminal-app'),
         terminalPath: getSettingInputValue('terminal-path'),
         terminalCwd: getSettingInputValue('terminal-cwd'),
         terminalAdmin: getSettingInputValue('terminal-admin'),
+        terminalFontSize: getSettingInputValue('terminal-font-size'),
+        terminalScrollback: getSettingInputValue('terminal-scrollback'),
+        terminalConfirmOnClose: getSettingInputValue('terminal-confirm-on-close'),
+        terminalShellArgs: getSettingInputValue('terminal-shell-args'),
+        terminalUseLoginShell: getSettingInputValue('terminal-use-login-shell'),
         gitPath: getSettingInputValue('git-path'),
         gitUsername: getSettingInputValue('git-username'),
         gitEmail: getSettingInputValue('git-email'),
         gitAutoInit: getSettingInputValue('git-auto-init'),
         gitAutoFetch: getSettingInputValue('git-auto-fetch'),
+        gitPruneOnFetch: getSettingInputValue('git-prune-on-fetch'),
+        gitUsePullRebase: getSettingInputValue('git-use-pull-rebase'),
+        gitConfirmForcePush: getSettingInputValue('git-confirm-force-push'),
+        gitAutoStash: getSettingInputValue('git-auto-stash'),
+        gitFetchInterval: getSettingInputValue('git-fetch-interval'),
+        gitSignCommits: getSettingInputValue('git-sign-commits'),
+        gitRequireMessage: getSettingInputValue('git-require-message'),
         defaultBranch: getSettingInputValue('default-branch'),
         autoUpdateExtensions: getSettingInputValue('auto-update-extensions'),
         extensionRecommendations: getSettingInputValue('extension-recommendations'),
         extensionUpdateCheck: getSettingInputValue('extension-update-check'),
+        extensionsAllowPrerelease: getSettingInputValue('extensions-allow-prerelease'),
+        extensionsTrustMarketplaceOnly: getSettingInputValue('extensions-trust-marketplace-only'),
+        extensionsAutoEnableWorkspaceRecommendations: getSettingInputValue('extensions-auto-enable-workspace-recommendations'),
         maxWorkers: getSettingInputValue('max-workers'),
         hardwareAcceleration: getSettingInputValue('hardware-acceleration'),
         cacheSize: getSettingInputValue('cache-size'),
+        diagnosticsRetentionDays: getSettingInputValue('diagnostics-retention-days'),
+        telemetryEnabled: getSettingInputValue('telemetry-enabled'),
+        crashReportingEnabled: getSettingInputValue('crash-reporting-enabled'),
+        safeModeOnStartup: getSettingInputValue('safe-mode-on-startup'),
+        startupTimeoutMs: getSettingInputValue('startup-timeout-ms'),
+        backupRetentionDays: getSettingInputValue('backup-retention-days'),
         devTools: getSettingInputValue('dev-tools'),
         verboseLogging: getSettingInputValue('verbose-logging'),
         extensions: {
@@ -359,6 +504,19 @@ async function applySettingsToRuntime(settings) {
     applyUiScaleSetting(normalized.uiScale);
     applyScrollBehaviorSetting(normalized.smoothScrolling);
     applyAnimationSetting(normalized.animationsEnabled);
+
+    const statusBar = document.querySelector('.status-bar');
+    if (statusBar) {
+        statusBar.style.display = normalized.showStatusBar ? 'flex' : 'none';
+    }
+
+    if (normalized.showStatusBar && typeof scheduleStatusBarRefresh === 'function') {
+        scheduleStatusBarRefresh({ immediate: true });
+    }
+
+    if (typeof updateStatusClockDisplay === 'function') {
+        updateStatusClockDisplay();
+    }
 }
 
 async function applySettingsToForm(settings, options = {}) {
@@ -390,6 +548,16 @@ async function applySettingsToForm(settings, options = {}) {
         setValue('license-url', normalized.licenseUrl);
         setChecked('show-welcome', normalized.showWelcome);
         setChecked('close-to-tray', normalized.closeToTray);
+        setChecked('launch-on-startup', normalized.launchOnStartup);
+        setChecked('reopen-last-workspace', normalized.reopenLastWorkspace);
+        setChecked('minimize-to-tray', normalized.minimizeToTray);
+        setChecked('notifications-enabled', normalized.notificationsEnabled);
+        setValue('status-time-format', normalized.statusTimeFormat);
+        setValue('default-project-prefix', normalized.defaultProjectPrefix);
+        setValue('default-project-template', normalized.defaultProjectTemplate);
+        setChecked('git-integration', normalized.gitIntegration);
+        setValue('auto-refresh-interval', String(normalized.autoRefreshInterval));
+        setChecked('enable-file-watcher', normalized.enableFileWatcher);
         setChecked('confirm-delete', normalized.confirmDelete);
 
         setValue('theme-select', normalized.theme);
@@ -409,9 +577,21 @@ async function applySettingsToForm(settings, options = {}) {
         setValue('ui-scale', String(normalized.uiScale));
         setChecked('smooth-scrolling', normalized.smoothScrolling);
         setChecked('animations-enabled', normalized.animationsEnabled);
+        setChecked('compact-mode', normalized.compactMode);
+        setChecked('show-status-bar', normalized.showStatusBar);
+        setChecked('dense-sidebar', normalized.denseSidebar);
+        setChecked('reduced-transparency', normalized.reducedTransparency);
+        setChecked('high-visibility-focus', normalized.highVisibilityFocus);
 
         setValue('editor-path', normalized.editorPath);
         setValue('editor-args', normalized.editorArgs);
+        setValue('editor-open-mode', normalized.editorOpenMode);
+        setChecked('reveal-in-explorer', normalized.revealInExplorer);
+        setChecked('preserve-editor-focus', normalized.preserveEditorFocus);
+        setValue('editor-word-wrap', normalized.editorWordWrap);
+        setValue('editor-tab-size', String(normalized.editorTabSize));
+        setChecked('editor-format-on-open', normalized.editorFormatOnOpen);
+        setChecked('editor-trim-trailing-whitespace', normalized.editorTrimTrailingWhitespace);
         setChecked('open-readme', normalized.openReadme);
         setChecked('create-gitignore', normalized.createGitignore);
 
@@ -419,25 +599,46 @@ async function applySettingsToForm(settings, options = {}) {
         setValue('terminal-path', normalized.terminalPath);
         setChecked('terminal-cwd', normalized.terminalCwd);
         setChecked('terminal-admin', normalized.terminalAdmin);
+        setValue('terminal-font-size', String(normalized.terminalFontSize));
+        setValue('terminal-scrollback', String(normalized.terminalScrollback));
+        setChecked('terminal-confirm-on-close', normalized.terminalConfirmOnClose);
+        setValue('terminal-shell-args', normalized.terminalShellArgs);
+        setChecked('terminal-use-login-shell', normalized.terminalUseLoginShell);
 
         setValue('git-path', normalized.gitPath);
         setValue('git-username', normalized.gitUsername);
         setValue('git-email', normalized.gitEmail);
         setChecked('git-auto-init', normalized.gitAutoInit);
         setChecked('git-auto-fetch', normalized.gitAutoFetch);
+        setChecked('git-prune-on-fetch', normalized.gitPruneOnFetch);
+        setChecked('git-use-pull-rebase', normalized.gitUsePullRebase);
+        setChecked('git-confirm-force-push', normalized.gitConfirmForcePush);
+        setChecked('git-auto-stash', normalized.gitAutoStash);
+        setValue('git-fetch-interval', String(normalized.gitFetchInterval));
+        setChecked('git-sign-commits', normalized.gitSignCommits);
+        setChecked('git-require-message', normalized.gitRequireMessage);
         setValue('default-branch', normalized.defaultBranch);
 
         setChecked('auto-update-extensions', normalized.autoUpdateExtensions);
         setChecked('extension-recommendations', normalized.extensionRecommendations);
         setValue('extension-update-check', normalized.extensionUpdateCheck);
+        setChecked('extensions-allow-prerelease', normalized.extensionsAllowPrerelease);
+        setChecked('extensions-trust-marketplace-only', normalized.extensionsTrustMarketplaceOnly);
+        setChecked('extensions-auto-enable-workspace-recommendations', normalized.extensionsAutoEnableWorkspaceRecommendations);
 
         setValue('max-workers', String(normalized.maxWorkers));
         setChecked('hardware-acceleration', normalized.hardwareAcceleration);
         setValue('cache-size', String(normalized.cacheSize));
+        setValue('diagnostics-retention-days', String(normalized.diagnosticsRetentionDays));
+        setChecked('telemetry-enabled', normalized.telemetryEnabled);
+        setChecked('crash-reporting-enabled', normalized.crashReportingEnabled);
+        setChecked('safe-mode-on-startup', normalized.safeModeOnStartup);
+        setValue('startup-timeout-ms', String(normalized.startupTimeoutMs));
+        setValue('backup-retention-days', String(normalized.backupRetentionDays));
         setChecked('dev-tools', normalized.devTools);
         setChecked('verbose-logging', normalized.verboseLogging);
 
-        ['recent-projects-limit', 'max-workers', 'cache-size'].forEach((id) => {
+        ['recent-projects-limit', 'auto-refresh-interval', 'editor-tab-size', 'terminal-font-size', 'terminal-scrollback', 'git-fetch-interval', 'max-workers', 'cache-size', 'diagnostics-retention-days', 'startup-timeout-ms', 'backup-retention-days'].forEach((id) => {
             document.getElementById(id)?.dispatchEvent(new Event('input', { bubbles: true }));
         });
 
@@ -476,7 +677,10 @@ function addSettingValidationError(inputId, message) {
     settingItem.classList.add('has-error');
     const errorMsg = document.createElement('div');
     errorMsg.className = 'setting-error-message';
-    errorMsg.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${escapeHtml(message)}`;
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-exclamation-circle';
+    errorMsg.appendChild(icon);
+    errorMsg.appendChild(document.createTextNode(` ${message}`));
     settingItem.appendChild(errorMsg);
 }
 
@@ -521,6 +725,22 @@ async function validateSettingsPayload(settings) {
 
     if (!SETTINGS_UPDATE_CHANNELS.has(normalized.updateChannel)) {
         errors.push({ inputId: 'update-channel', message: 'Unsupported update channel' });
+    }
+
+    if (!SETTINGS_STATUS_TIME_FORMATS.has(normalized.statusTimeFormat)) {
+        errors.push({ inputId: 'status-time-format', message: 'Unsupported status time format' });
+    }
+
+    if (!SETTINGS_DEFAULT_PROJECT_TEMPLATES.has(normalized.defaultProjectTemplate)) {
+        errors.push({ inputId: 'default-project-template', message: 'Unsupported default project template' });
+    }
+
+    if (!SETTINGS_EDITOR_OPEN_MODES.has(normalized.editorOpenMode)) {
+        errors.push({ inputId: 'editor-open-mode', message: 'Unsupported editor launch mode' });
+    }
+
+    if (!SETTINGS_EDITOR_WORD_WRAP.has(normalized.editorWordWrap)) {
+        errors.push({ inputId: 'editor-word-wrap', message: 'Unsupported editor word wrap mode' });
     }
 
     [
@@ -576,6 +796,16 @@ function countChangedSettings(previous, next) {
         'firstRunCompleted',
         'showWelcome',
         'closeToTray',
+        'launchOnStartup',
+        'reopenLastWorkspace',
+        'minimizeToTray',
+        'notificationsEnabled',
+        'statusTimeFormat',
+        'defaultProjectPrefix',
+        'defaultProjectTemplate',
+        'gitIntegration',
+        'autoRefreshInterval',
+        'enableFileWatcher',
         'confirmDelete',
         'theme',
         'accentColor',
@@ -586,26 +816,59 @@ function countChangedSettings(previous, next) {
         'uiScale',
         'smoothScrolling',
         'animationsEnabled',
+        'compactMode',
+        'showStatusBar',
+        'denseSidebar',
+        'reducedTransparency',
+        'highVisibilityFocus',
         'editorPath',
         'editorArgs',
+        'editorOpenMode',
+        'revealInExplorer',
+        'preserveEditorFocus',
+        'editorWordWrap',
+        'editorTabSize',
+        'editorFormatOnOpen',
+        'editorTrimTrailingWhitespace',
         'openReadme',
         'createGitignore',
         'terminalApp',
         'terminalPath',
         'terminalCwd',
         'terminalAdmin',
+        'terminalFontSize',
+        'terminalScrollback',
+        'terminalConfirmOnClose',
+        'terminalShellArgs',
+        'terminalUseLoginShell',
         'gitPath',
         'gitUsername',
         'gitEmail',
         'gitAutoInit',
         'gitAutoFetch',
+        'gitPruneOnFetch',
+        'gitUsePullRebase',
+        'gitConfirmForcePush',
+        'gitAutoStash',
+        'gitFetchInterval',
+        'gitSignCommits',
+        'gitRequireMessage',
         'defaultBranch',
         'autoUpdateExtensions',
         'extensionRecommendations',
         'extensionUpdateCheck',
+        'extensionsAllowPrerelease',
+        'extensionsTrustMarketplaceOnly',
+        'extensionsAutoEnableWorkspaceRecommendations',
         'maxWorkers',
         'hardwareAcceleration',
         'cacheSize',
+        'diagnosticsRetentionDays',
+        'telemetryEnabled',
+        'crashReportingEnabled',
+        'safeModeOnStartup',
+        'startupTimeoutMs',
+        'backupRetentionDays',
         'devTools',
         'verboseLogging'
     ];
@@ -883,7 +1146,7 @@ async function attemptAppClose(options = {}) {
     try {
         const normalized = normalizeSettings(appSettings);
         if (normalized.closeToTray && !forceQuit) {
-            await ipcRenderer.invoke('close-window');
+            await ipcRenderer.invoke('close-window', { closeToTray: true });
             return;
         }
 
@@ -977,10 +1240,12 @@ function initializeCustomDropdowns() {
         });
     });
 
-    // Close any open dropdown when clicking outside
-    document.addEventListener('click', () => {
-        closeAllDropdowns();
-    });
+    // Close any open dropdown when clicking outside (deduplicate across re-inits)
+    if (initializeCustomDropdowns._clickHandler) {
+        document.removeEventListener('click', initializeCustomDropdowns._clickHandler);
+    }
+    initializeCustomDropdowns._clickHandler = () => { closeAllDropdowns(); };
+    document.addEventListener('click', initializeCustomDropdowns._clickHandler);
 
     function toggleDropdown(dropdown) {
         const isOpen = dropdown.classList.contains('open');
@@ -1470,7 +1735,11 @@ function updateSettingsBreadcrumb(categoryName) {
         'advanced': 'Advanced'
     };
 
-    breadcrumb.innerHTML = `<span class="breadcrumb-item active">${categoryNames[categoryName] || 'Settings'}</span>`;
+    breadcrumb.textContent = '';
+    const breadcrumbSpan = document.createElement('span');
+    breadcrumbSpan.className = 'breadcrumb-item active';
+    breadcrumbSpan.textContent = categoryNames[categoryName] || 'Settings';
+    breadcrumb.appendChild(breadcrumbSpan);
 }
 
 // Filter settings based on search query
@@ -1600,4 +1869,3 @@ async function exportSettings() {
 }
 
 // Git functionality
-

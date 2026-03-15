@@ -120,7 +120,7 @@ function initializeDocumentationView() {
     });
 
     document.getElementById('docs-open-report-issue')?.addEventListener('click', () => {
-        openConfiguredExternalLink('issues', '', 'Opening issue tracker...');
+        openReportSmartDialog();
     });
 
     switchDocumentationTab('overview');
@@ -328,29 +328,163 @@ function updateAboutRegistrationState() {
     }
 }
 
+let aboutDialogMotionTimer = null;
+let aboutDialogKeyHandler = null;
+let aboutDialogCloseResolve = null;
+
+function getAboutDialogElements() {
+    return {
+        overlay: document.getElementById('about-modal'),
+        shell: document.getElementById('about-smart-shell'),
+        closeBtn: document.getElementById('about-close-btn')
+    };
+}
+
+function closeAboutSmartDialog() {
+    const { overlay } = getAboutDialogElements();
+
+    if (!overlay) {
+        return Promise.resolve();
+    }
+
+    if (aboutDialogKeyHandler) {
+        document.removeEventListener('keydown', aboutDialogKeyHandler, true);
+        aboutDialogKeyHandler = null;
+    }
+
+    overlay.onclick = null;
+
+    if (aboutDialogMotionTimer) {
+        clearTimeout(aboutDialogMotionTimer);
+        aboutDialogMotionTimer = null;
+        if (typeof aboutDialogCloseResolve === 'function') {
+            aboutDialogCloseResolve();
+            aboutDialogCloseResolve = null;
+        }
+    }
+
+    if (!overlay.classList.contains('active')) {
+        overlay.classList.remove('update-smart-entering', 'update-smart-closing');
+        overlay.setAttribute('aria-hidden', 'true');
+        if (typeof aboutDialogCloseResolve === 'function') {
+            aboutDialogCloseResolve();
+            aboutDialogCloseResolve = null;
+        }
+        return Promise.resolve();
+    }
+
+    overlay.classList.remove('update-smart-entering');
+    overlay.classList.add('update-smart-closing');
+    overlay.setAttribute('aria-hidden', 'true');
+
+    const exitDuration = Number.isFinite(UPDATE_SMART_DIALOG_EXIT_MS)
+        ? UPDATE_SMART_DIALOG_EXIT_MS
+        : 200;
+
+    return new Promise((resolve) => {
+        aboutDialogCloseResolve = resolve;
+        aboutDialogMotionTimer = setTimeout(() => {
+            overlay.classList.remove('active', 'update-smart-entering', 'update-smart-closing');
+            aboutDialogMotionTimer = null;
+            if (typeof aboutDialogCloseResolve === 'function') {
+                aboutDialogCloseResolve();
+            }
+            aboutDialogCloseResolve = null;
+        }, exitDuration);
+    });
+}
+
+function openAboutSmartDialog() {
+    const { overlay, shell, closeBtn } = getAboutDialogElements();
+    if (!overlay || !shell || !closeBtn) {
+        return false;
+    }
+
+    if (aboutDialogMotionTimer) {
+        clearTimeout(aboutDialogMotionTimer);
+        aboutDialogMotionTimer = null;
+        if (typeof aboutDialogCloseResolve === 'function') {
+            aboutDialogCloseResolve();
+            aboutDialogCloseResolve = null;
+        }
+    }
+
+    if (aboutDialogKeyHandler) {
+        document.removeEventListener('keydown', aboutDialogKeyHandler, true);
+        aboutDialogKeyHandler = null;
+    }
+
+    overlay.classList.remove('update-smart-entering', 'update-smart-closing');
+    overlay.classList.add('active');
+    overlay.setAttribute('aria-hidden', 'false');
+
+    closeBtn.onclick = () => {
+        void closeAboutSmartDialog();
+    };
+
+    overlay.onclick = (event) => {
+        if (event.target === overlay) {
+            void closeAboutSmartDialog();
+        }
+    };
+
+    aboutDialogKeyHandler = (event) => {
+        if (event.key !== 'Escape') {
+            return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        void closeAboutSmartDialog();
+    };
+    document.addEventListener('keydown', aboutDialogKeyHandler, true);
+
+    void overlay.offsetWidth;
+    requestAnimationFrame(() => {
+        overlay.classList.add('update-smart-entering');
+        if (closeBtn) {
+            closeBtn.focus({ preventScroll: true });
+        } else {
+            shell.focus({ preventScroll: true });
+        }
+    });
+
+    return true;
+}
+
 // Show About Dialog
 async function showAboutDialog() {
-    showModal('about-modal');
+    if (!openAboutSmartDialog()) {
+        return;
+    }
 
     await loadAppVersionInfo();
     updateAboutRegistrationState();
+    const electronVersionEl = document.getElementById('electron-version');
+    const nodeVersionEl = document.getElementById('node-version');
+    const platformInfoEl = document.getElementById('platform-info');
 
     // Populate version information
     if (process && process.versions) {
-        document.getElementById('electron-version').textContent = process.versions.electron || 'N/A';
-        document.getElementById('node-version').textContent = process.versions.node || 'N/A';
+        if (electronVersionEl) {
+            electronVersionEl.textContent = process.versions.electron || 'N/A';
+        }
+        if (nodeVersionEl) {
+            nodeVersionEl.textContent = process.versions.node || 'N/A';
+        }
     }
 
     // Platform information
     const platform = process.platform || 'unknown';
     const arch = process.arch || 'unknown';
-    document.getElementById('platform-info').textContent = `${platform} (${arch})`;
+    if (platformInfoEl) {
+        platformInfoEl.textContent = `${platform} (${arch})`;
+    }
 
     // Fetch additional system information from main process
     try {
         const systemInfo = await ipcRenderer.invoke('get-system-info');
-        if (systemInfo?.platform) {
-            document.getElementById('platform-info').textContent = `${systemInfo.platform} (${systemInfo.arch || 'unknown'})`;
+        if (systemInfo?.platform && platformInfoEl) {
+            platformInfoEl.textContent = `${systemInfo.platform} (${systemInfo.arch || 'unknown'})`;
         }
     } catch (e) {
         // Non-critical info only
@@ -364,7 +498,7 @@ function initializeAboutDialog() {
     });
 
     document.getElementById('open-docs')?.addEventListener('click', async () => {
-        hideModal('about-modal');
+        await closeAboutSmartDialog();
         const opened = await openDocumentationView('overview');
         if (!opened) {
             showNotification('Unable to open Documentation view right now.', 'warning');
@@ -376,13 +510,415 @@ function initializeAboutDialog() {
     });
 
     document.getElementById('check-updates')?.addEventListener('click', async () => {
-        hideModal('about-modal');
+        await closeAboutSmartDialog();
         await checkForUpdatesInteractive();
     });
 
     document.getElementById('rollback-update')?.addEventListener('click', async () => {
-        hideModal('about-modal');
+        await closeAboutSmartDialog();
         await rollbackToStableInteractive();
+    });
+}
+
+// ─── Report Issue Smart Dialog ───────────────────────────────────────────
+
+let reportDialogMotionTimer = null;
+let reportDialogKeyHandler = null;
+let reportDialogCloseResolve = null;
+let reportDropdownOpen = false;
+
+function getReportDialogElements() {
+    return {
+        overlay: document.getElementById('report-issue-overlay'),
+        shell: document.getElementById('report-issue-shell'),
+        closeBtn: document.getElementById('report-issue-close')
+    };
+}
+
+function closeReportDropdown() {
+    const dropdown = document.getElementById('report-dropdown');
+    if (dropdown) {
+        dropdown.classList.remove('is-open');
+    }
+    reportDropdownOpen = false;
+}
+
+function selectReportCategory(value) {
+    const hiddenInput = document.getElementById('report-category');
+    const dropdown = document.getElementById('report-dropdown');
+    const triggerEl = document.getElementById('report-dropdown-trigger');
+
+    if (!hiddenInput || !dropdown || !triggerEl) {
+        return;
+    }
+
+    hiddenInput.value = value;
+
+    // Update selected state on items
+    dropdown.querySelectorAll('.report-dropdown-item').forEach((item) => {
+        item.classList.toggle('is-selected', item.dataset.value === value);
+    });
+
+    // Find the selected item and update trigger display
+    const selectedItem = dropdown.querySelector(`.report-dropdown-item[data-value="${value}"]`);
+    if (selectedItem) {
+        const icon = selectedItem.querySelector('i');
+        const label = selectedItem.querySelector('.report-dropdown-item-label');
+
+        triggerEl.innerHTML = '';
+        if (icon) {
+            const iconClone = document.createElement('i');
+            iconClone.className = icon.className;
+            iconClone.classList.add('report-dropdown-selected-icon');
+            triggerEl.appendChild(iconClone);
+        }
+        const textSpan = document.createElement('span');
+        textSpan.className = 'report-dropdown-selected-text';
+        textSpan.textContent = label ? label.textContent : value;
+        triggerEl.appendChild(textSpan);
+        const arrow = document.createElement('i');
+        arrow.className = 'fas fa-chevron-down report-dropdown-arrow';
+        triggerEl.appendChild(arrow);
+    }
+
+    closeReportDropdown();
+    updateReportSubmitState();
+}
+
+function resetReportForm() {
+    const hiddenInput = document.getElementById('report-category');
+    const description = document.getElementById('report-description');
+    const charCount = document.getElementById('report-char-current');
+    const submitBtn = document.getElementById('report-submit');
+    const form = document.getElementById('report-form-section');
+    const actions = document.getElementById('report-actions-section');
+    const success = document.getElementById('report-success');
+    const dropdown = document.getElementById('report-dropdown');
+    const triggerEl = document.getElementById('report-dropdown-trigger');
+
+    if (hiddenInput) {
+        hiddenInput.value = '';
+    }
+
+    if (description) {
+        description.value = '';
+    }
+
+    if (charCount) {
+        charCount.textContent = '0';
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        const btnSpan = submitBtn.querySelector('span');
+        const btnIcon = submitBtn.querySelector('i');
+        if (btnSpan) {
+            btnSpan.textContent = 'Send Report';
+        }
+        if (btnIcon) {
+            btnIcon.className = 'fas fa-paper-plane';
+        }
+    }
+
+    // Reset dropdown to placeholder state
+    if (triggerEl) {
+        triggerEl.innerHTML = '';
+        const placeholder = document.createElement('span');
+        placeholder.className = 'report-dropdown-placeholder';
+        placeholder.id = 'report-dropdown-text';
+        placeholder.textContent = 'Select a category...';
+        triggerEl.appendChild(placeholder);
+        const arrow = document.createElement('i');
+        arrow.className = 'fas fa-chevron-down report-dropdown-arrow';
+        triggerEl.appendChild(arrow);
+    }
+
+    if (dropdown) {
+        dropdown.classList.remove('is-open');
+        dropdown.querySelectorAll('.report-dropdown-item').forEach((item) => {
+            item.classList.remove('is-selected');
+        });
+    }
+
+    reportDropdownOpen = false;
+
+    // Show form + actions, hide success (using classes, not hidden attribute)
+    if (form) {
+        form.classList.remove('is-hidden');
+    }
+
+    if (actions) {
+        actions.classList.remove('is-hidden');
+    }
+
+    if (success) {
+        success.classList.remove('is-visible');
+    }
+}
+
+function closeReportSmartDialog() {
+    const { overlay } = getReportDialogElements();
+
+    if (!overlay) {
+        return Promise.resolve();
+    }
+
+    closeReportDropdown();
+
+    if (reportDialogKeyHandler) {
+        document.removeEventListener('keydown', reportDialogKeyHandler, true);
+        reportDialogKeyHandler = null;
+    }
+
+    overlay.onclick = null;
+
+    if (reportDialogMotionTimer) {
+        clearTimeout(reportDialogMotionTimer);
+        reportDialogMotionTimer = null;
+        if (typeof reportDialogCloseResolve === 'function') {
+            reportDialogCloseResolve();
+            reportDialogCloseResolve = null;
+        }
+    }
+
+    if (!overlay.classList.contains('active')) {
+        overlay.classList.remove('update-smart-entering', 'update-smart-closing');
+        overlay.setAttribute('aria-hidden', 'true');
+        if (typeof reportDialogCloseResolve === 'function') {
+            reportDialogCloseResolve();
+            reportDialogCloseResolve = null;
+        }
+        return Promise.resolve();
+    }
+
+    overlay.classList.remove('update-smart-entering');
+    overlay.classList.add('update-smart-closing');
+    overlay.setAttribute('aria-hidden', 'true');
+
+    const exitDuration = Number.isFinite(UPDATE_SMART_DIALOG_EXIT_MS)
+        ? UPDATE_SMART_DIALOG_EXIT_MS
+        : 200;
+
+    return new Promise((resolve) => {
+        reportDialogCloseResolve = resolve;
+        reportDialogMotionTimer = setTimeout(() => {
+            overlay.classList.remove('active', 'update-smart-entering', 'update-smart-closing');
+            reportDialogMotionTimer = null;
+            if (typeof reportDialogCloseResolve === 'function') {
+                reportDialogCloseResolve();
+            }
+            reportDialogCloseResolve = null;
+        }, exitDuration);
+    });
+}
+
+function openReportSmartDialog() {
+    const { overlay, shell, closeBtn } = getReportDialogElements();
+    if (!overlay || !shell || !closeBtn) {
+        return false;
+    }
+
+    if (reportDialogMotionTimer) {
+        clearTimeout(reportDialogMotionTimer);
+        reportDialogMotionTimer = null;
+        if (typeof reportDialogCloseResolve === 'function') {
+            reportDialogCloseResolve();
+            reportDialogCloseResolve = null;
+        }
+    }
+
+    if (reportDialogKeyHandler) {
+        document.removeEventListener('keydown', reportDialogKeyHandler, true);
+        reportDialogKeyHandler = null;
+    }
+
+    resetReportForm();
+
+    overlay.classList.remove('update-smart-entering', 'update-smart-closing');
+    overlay.classList.add('active');
+    overlay.setAttribute('aria-hidden', 'false');
+
+    closeBtn.onclick = () => {
+        void closeReportSmartDialog();
+    };
+
+    overlay.onclick = (event) => {
+        if (event.target === overlay) {
+            void closeReportSmartDialog();
+        }
+    };
+
+    reportDialogKeyHandler = (event) => {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            if (reportDropdownOpen) {
+                closeReportDropdown();
+            } else {
+                void closeReportSmartDialog();
+            }
+        }
+    };
+    document.addEventListener('keydown', reportDialogKeyHandler, true);
+
+    void overlay.offsetWidth;
+    requestAnimationFrame(() => {
+        overlay.classList.add('update-smart-entering');
+        const dropdown = document.getElementById('report-dropdown');
+        if (dropdown) {
+            dropdown.focus({ preventScroll: true });
+        } else {
+            shell.focus({ preventScroll: true });
+        }
+    });
+
+    return true;
+}
+
+function updateReportSubmitState() {
+    const hiddenInput = document.getElementById('report-category');
+    const description = document.getElementById('report-description');
+    const submitBtn = document.getElementById('report-submit');
+    if (!hiddenInput || !description || !submitBtn) {
+        return;
+    }
+
+    const hasCategory = Boolean(hiddenInput.value);
+    const hasDescription = description.value.trim().length > 0;
+    submitBtn.disabled = !(hasCategory && hasDescription);
+}
+
+async function submitIssueReport() {
+    const hiddenInput = document.getElementById('report-category');
+    const description = document.getElementById('report-description');
+    const submitBtn = document.getElementById('report-submit');
+    const form = document.getElementById('report-form-section');
+    const actions = document.getElementById('report-actions-section');
+    const success = document.getElementById('report-success');
+
+    if (!hiddenInput || !description || !submitBtn) {
+        return;
+    }
+
+    const categoryValue = hiddenInput.value;
+    const descriptionValue = description.value.trim();
+
+    if (!categoryValue || !descriptionValue) {
+        return;
+    }
+
+    // Disable button and show sending state
+    submitBtn.disabled = true;
+    const btnSpan = submitBtn.querySelector('span');
+    const btnIcon = submitBtn.querySelector('i');
+    if (btnSpan) {
+        btnSpan.textContent = 'Sending...';
+    }
+    if (btnIcon) {
+        btnIcon.className = 'fas fa-circle-notch fa-spin';
+    }
+
+    try {
+        const result = await ipcRenderer.invoke('submit-issue-report', {
+            category: categoryValue,
+            description: descriptionValue
+        });
+
+        if (result?.success) {
+            // Transition to success state
+            if (form) {
+                form.classList.add('is-hidden');
+            }
+            if (actions) {
+                actions.classList.add('is-hidden');
+            }
+            if (success) {
+                success.classList.add('is-visible');
+            }
+
+            // Auto-close after a comfortable pause
+            setTimeout(() => {
+                void closeReportSmartDialog();
+            }, 2200);
+        } else {
+            showNotification(result?.error || 'Failed to send report. Please try again.', 'error');
+            submitBtn.disabled = false;
+            if (btnSpan) {
+                btnSpan.textContent = 'Send Report';
+            }
+            if (btnIcon) {
+                btnIcon.className = 'fas fa-paper-plane';
+            }
+        }
+    } catch {
+        showNotification('Failed to send report. Please try again.', 'error');
+        submitBtn.disabled = false;
+        if (btnSpan) {
+            btnSpan.textContent = 'Send Report';
+        }
+        if (btnIcon) {
+            btnIcon.className = 'fas fa-paper-plane';
+        }
+    }
+}
+
+function initializeReportDialog() {
+    const description = document.getElementById('report-description');
+    const charCount = document.getElementById('report-char-current');
+    const dropdown = document.getElementById('report-dropdown');
+    const triggerEl = document.getElementById('report-dropdown-trigger');
+
+    // Textarea character counter + validation
+    if (description) {
+        description.addEventListener('input', () => {
+            if (charCount) {
+                charCount.textContent = description.value.length;
+            }
+            updateReportSubmitState();
+        });
+    }
+
+    // Custom dropdown toggle
+    if (triggerEl && dropdown) {
+        triggerEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            reportDropdownOpen = !reportDropdownOpen;
+            dropdown.classList.toggle('is-open', reportDropdownOpen);
+        });
+
+        // Keyboard support on the dropdown wrapper
+        dropdown.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                if (!reportDropdownOpen) {
+                    reportDropdownOpen = true;
+                    dropdown.classList.add('is-open');
+                }
+            }
+        });
+    }
+
+    // Dropdown item selection
+    document.getElementById('report-dropdown-menu')?.addEventListener('click', (e) => {
+        const item = e.target.closest('.report-dropdown-item');
+        if (item?.dataset.value) {
+            selectReportCategory(item.dataset.value);
+        }
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (reportDropdownOpen && !e.target.closest('#report-dropdown')) {
+            closeReportDropdown();
+        }
+    });
+
+    document.getElementById('report-cancel')?.addEventListener('click', () => {
+        void closeReportSmartDialog();
+    });
+
+    document.getElementById('report-submit')?.addEventListener('click', () => {
+        void submitIssueReport();
     });
 }
 
@@ -587,6 +1123,9 @@ async function switchView(viewName) {
     } else if (viewName === 'diagnostics' && logViewerController?.refresh) {
         void logViewerController.refresh();
     }
+
+    // Keep ARIA labels in sync when the active view changes
+    refreshSidebarAccessibilityLabels();
 
     return true;
 }
@@ -995,7 +1534,7 @@ async function loadAppVersionInfo() {
 function applyAppVersionDisplays() {
     const aboutVersionEl = document.getElementById('app-version');
     if (aboutVersionEl) {
-        aboutVersionEl.textContent = `Version ${appVersionInfo.displayVersion}`;
+        aboutVersionEl.textContent = appVersionInfo.displayVersion;
     }
 
     const aboutReleaseChannelEl = document.getElementById('about-release-channel');
@@ -1004,7 +1543,7 @@ function applyAppVersionDisplays() {
             ? appVersionInfo.channel.trim().toLowerCase()
             : 'stable';
         const channelLabel = channel.charAt(0).toUpperCase() + channel.slice(1);
-        aboutReleaseChannelEl.textContent = `${channelLabel} Channel`;
+        aboutReleaseChannelEl.textContent = channelLabel;
         aboutReleaseChannelEl.dataset.channel = channel;
     }
 
@@ -1016,78 +1555,545 @@ function applyAppVersionDisplays() {
     syncTitlebarUpdateControl();
 }
 
-function setStatusCurrentView(viewLabel) {
+const STATUS_MESSAGE_SEVERITIES = new Set(['neutral', 'info', 'success', 'warning', 'error', 'busy']);
+const STATUS_MESSAGE_ICON_BY_SEVERITY = {
+    neutral: 'fa-circle-dot',
+    info: 'fa-circle-info',
+    success: 'fa-circle-check',
+    warning: 'fa-triangle-exclamation',
+    error: 'fa-circle-xmark',
+    busy: 'fa-arrows-rotate'
+};
+const STATUS_MESSAGE_CLASS_LIST = ['is-neutral', 'is-info', 'is-success', 'is-warning', 'is-error', 'is-busy'];
+let statusBarRefreshTimer = null;
+let statusBarClockTimer = null;
+let statusBarUnloadCleanupBound = false;
+const statusBarState = {
+    currentView: 'Dashboard',
+    projectName: 'No project selected',
+    branchName: '--',
+    connected: false,
+    totalProjects: 0,
+    recentProjects: 0,
+    overrideMessage: '',
+    overrideSeverity: 'info',
+    overrideExpiresAt: 0
+};
+
+function sanitizeStatusSeverity(value) {
+    const normalized = typeof value === 'string' ? value.trim().toLowerCase() : 'info';
+    return STATUS_MESSAGE_SEVERITIES.has(normalized) ? normalized : 'info';
+}
+
+function inferStatusSeverityFromText(message) {
+    const normalized = String(message || '').trim().toLowerCase();
+    if (!normalized) {
+        return 'info';
+    }
+
+    if (
+        normalized.includes('error') ||
+        normalized.includes('failed') ||
+        normalized.includes('failure') ||
+        normalized.includes('invalid')
+    ) {
+        return 'error';
+    }
+
+    if (
+        normalized.includes('warning') ||
+        normalized.includes('requires') ||
+        normalized.includes('unable') ||
+        normalized.includes('missing')
+    ) {
+        return 'warning';
+    }
+
+    if (
+        normalized.includes('checking') ||
+        normalized.includes('loading') ||
+        normalized.includes('refresh') ||
+        normalized.includes('download') ||
+        normalized.includes('upload') ||
+        normalized.includes('clon')
+    ) {
+        return 'busy';
+    }
+
+    if (
+        normalized.includes('saved') ||
+        normalized.includes('complete') ||
+        normalized.includes('connected') ||
+        normalized.includes('enabled')
+    ) {
+        return 'success';
+    }
+
+    return 'info';
+}
+
+function formatStatusTimeValue(dateValue = new Date()) {
+    const resolvedDate = dateValue instanceof Date ? dateValue : new Date(dateValue);
+    const fallback = '--:--';
+    if (Number.isNaN(resolvedDate.getTime())) {
+        return fallback;
+    }
+
+    let formatPreference = 'system';
+    if (typeof normalizeSettings === 'function') {
+        formatPreference = normalizeSettings(appSettings).statusTimeFormat || 'system';
+    } else if (appSettings && typeof appSettings.statusTimeFormat === 'string') {
+        formatPreference = appSettings.statusTimeFormat;
+    }
+
+    const options = {
+        hour: '2-digit',
+        minute: '2-digit'
+    };
+
+    if (formatPreference === '24h') {
+        options.hour12 = false;
+    } else if (formatPreference === '12h') {
+        options.hour12 = true;
+    }
+
+    return resolvedDate.toLocaleTimeString([], options);
+}
+
+function updateStatusClockDisplay() {
+    const timeEl = document.getElementById('status-time');
+    if (!timeEl) {
+        return;
+    }
+
+    const now = new Date();
+    timeEl.textContent = formatStatusTimeValue(now);
+    timeEl.title = now.toLocaleString();
+}
+
+function stopStatusClockTimer() {
+    if (statusBarClockTimer) {
+        clearInterval(statusBarClockTimer);
+        statusBarClockTimer = null;
+    }
+}
+
+function startStatusClockTimer() {
+    stopStatusClockTimer();
+    updateStatusClockDisplay();
+    statusBarClockTimer = setInterval(() => {
+        updateStatusClockDisplay();
+    }, 1000);
+
+    if (!statusBarUnloadCleanupBound) {
+        statusBarUnloadCleanupBound = true;
+        window.addEventListener('beforeunload', () => {
+            stopStatusClockTimer();
+            if (statusBarRefreshTimer) {
+                clearTimeout(statusBarRefreshTimer);
+                statusBarRefreshTimer = null;
+            }
+        }, { once: true });
+    }
+}
+
+function getOperationQueueStatusMessage() {
+    if (!Array.isArray(operationQueueJobs) || operationQueueJobs.length === 0) {
+        return null;
+    }
+
+    const runningJobs = operationQueueJobs.filter((job) => job?.status === 'running');
+    const queuedJobs = operationQueueJobs.filter((job) => job?.status === 'queued');
+
+    if (runningJobs.length > 0) {
+        const primaryJob = runningJobs[0];
+        const primaryLabel = typeof getOperationQueueLabel === 'function'
+            ? getOperationQueueLabel(primaryJob?.type)
+            : 'Operation';
+        const queuedSuffix = queuedJobs.length > 0 ? `, ${queuedJobs.length} queued` : '';
+        const text = runningJobs.length === 1
+            ? `${primaryLabel} running${queuedSuffix}`
+            : `${runningJobs.length} operations running${queuedSuffix}`;
+        return {
+            text,
+            severity: 'busy'
+        };
+    }
+
+    if (queuedJobs.length > 0) {
+        return {
+            text: `${queuedJobs.length} operation${queuedJobs.length === 1 ? '' : 's'} queued`,
+            severity: 'info'
+        };
+    }
+
+    return null;
+}
+
+function resolveStatusMessageState() {
+    const now = Date.now();
+    if (statusBarState.overrideMessage && statusBarState.overrideExpiresAt > now) {
+        return {
+            text: statusBarState.overrideMessage,
+            severity: sanitizeStatusSeverity(statusBarState.overrideSeverity)
+        };
+    }
+
+    if (statusBarState.overrideMessage && statusBarState.overrideExpiresAt <= now) {
+        statusBarState.overrideMessage = '';
+        statusBarState.overrideExpiresAt = 0;
+    }
+
+    const queueStatus = getOperationQueueStatusMessage();
+    if (queueStatus) {
+        return queueStatus;
+    }
+
+    if (cloneSmartDialogInProgress) {
+        return {
+            text: 'Cloning repository...',
+            severity: 'busy'
+        };
+    }
+
+    if (githubUploadInProgress) {
+        return {
+            text: 'Uploading to GitHub...',
+            severity: 'busy'
+        };
+    }
+
+    if (updateState.checking) {
+        return {
+            text: 'Checking for updates...',
+            severity: 'busy'
+        };
+    }
+
+    if (updateState.error) {
+        return {
+            text: 'Update service error',
+            severity: 'warning'
+        };
+    }
+
+    if (updateState.downloaded) {
+        return {
+            text: 'Update ready to install',
+            severity: 'success'
+        };
+    }
+
+    const downloadProgress = Number(updateState.downloadProgress);
+    if (updateState.backgroundDownloadActive && Number.isFinite(downloadProgress) && downloadProgress > 0 && downloadProgress < 100) {
+        return {
+            text: `Downloading in background ${Math.round(downloadProgress)}%`,
+            severity: 'busy'
+        };
+    }
+
+    if (updateState.available && Number.isFinite(downloadProgress) && downloadProgress > 0 && downloadProgress < 100) {
+        return {
+            text: `Downloading update ${Math.round(downloadProgress)}%`,
+            severity: 'busy'
+        };
+    }
+
+    if (updateState.available) {
+        const availableVersion = typeof updateState.latestVersion === 'string' && updateState.latestVersion.trim()
+            ? updateState.latestVersion.trim()
+            : 'latest';
+        return {
+            text: `Update ${availableVersion} available`,
+            severity: 'info'
+        };
+    }
+
+    if (!workspacePath) {
+        return {
+            text: 'Choose a workspace to begin',
+            severity: 'warning'
+        };
+    }
+
+    if (currentView === 'git' && (!currentProject || !currentProject.path)) {
+        return {
+            text: 'Select a repository to manage',
+            severity: 'warning'
+        };
+    }
+
+    if (currentProject && statusBarState.branchName === '--' && currentView === 'git') {
+        return {
+            text: 'Git repository not initialized',
+            severity: 'info'
+        };
+    }
+
+    if (statusBarState.totalProjects <= 0) {
+        return {
+            text: 'No projects found in workspace',
+            severity: 'info'
+        };
+    }
+
+    if (!statusBarState.connected && currentView === 'git') {
+        return {
+            text: 'GitHub account not connected',
+            severity: 'info'
+        };
+    }
+
+    return {
+        text: 'Ready',
+        severity: 'neutral'
+    };
+}
+
+function applyStatusMessageState(messageState) {
+    const messageEl = document.getElementById('status-message');
+    const messageIconEl = document.getElementById('status-message-icon');
+    const messageItemEl = document.querySelector('.status-item-message');
+    if (!messageEl || !messageIconEl || !messageItemEl) {
+        return;
+    }
+
+    const safeText = typeof messageState?.text === 'string' && messageState.text.trim()
+        ? messageState.text.trim()
+        : 'Ready';
+    const safeSeverity = sanitizeStatusSeverity(messageState?.severity || 'neutral');
+
+    messageEl.textContent = safeText;
+    messageItemEl.title = safeText;
+    messageItemEl.classList.remove(...STATUS_MESSAGE_CLASS_LIST);
+    messageItemEl.classList.add(`is-${safeSeverity}`);
+
+    const iconClass = STATUS_MESSAGE_ICON_BY_SEVERITY[safeSeverity] || STATUS_MESSAGE_ICON_BY_SEVERITY.info;
+    messageIconEl.className = `fas ${iconClass}`;
+    messageIconEl.classList.toggle('status-spin', safeSeverity === 'busy');
+}
+
+function renderStatusUpdateProgressIndicator() {
+    const progressItemEl = document.getElementById('status-update-progress');
+    const progressTextEl = document.getElementById('status-update-progress-text');
+    const progressBarEl = document.getElementById('status-update-progress-bar');
+    if (!progressItemEl || !progressTextEl || !progressBarEl) {
+        return;
+    }
+
+    const rawProgress = Number(updateState.downloadProgress);
+    const clampedProgress = Number.isFinite(rawProgress) ? Math.max(0, Math.min(100, rawProgress)) : 0;
+    const roundedProgress = Math.round(clampedProgress);
+    const dialogContext = typeof getActiveUpdateSmartDialogContext === 'function'
+        ? getActiveUpdateSmartDialogContext()
+        : '';
+    const dialogVisible = typeof isUpdateSmartDialogActive === 'function'
+        ? isUpdateSmartDialogActive()
+        : false;
+    const dialogShowingDownload = dialogVisible && (dialogContext === 'download' || dialogContext === 'download-test');
+    const shouldShow = updateState.backgroundDownloadActive === true
+        && Number.isFinite(rawProgress)
+        && rawProgress > 0
+        && rawProgress < 100
+        && !dialogShowingDownload;
+
+    progressItemEl.hidden = !shouldShow;
+    progressItemEl.classList.toggle('is-active', shouldShow);
+
+    if (!shouldShow) {
+        progressTextEl.textContent = 'Downloading update 0%';
+        progressBarEl.style.width = '0%';
+        progressItemEl.title = 'Background update download progress';
+        return;
+    }
+
+    const progressText = `Downloading update ${roundedProgress}%`;
+    progressTextEl.textContent = progressText;
+    progressBarEl.style.width = `${clampedProgress}%`;
+    progressItemEl.title = progressText;
+}
+
+function renderStatusBarState() {
+    const workspaceEl = document.getElementById('workspace-path');
     const viewEl = document.getElementById('status-current-view');
-    if (viewEl) {
-        viewEl.textContent = viewLabel || 'Dashboard';
-    }
-}
-
-function setStatusProjectName(projectName) {
     const projectNameEl = document.getElementById('status-project-name');
-    if (projectNameEl) {
-        projectNameEl.textContent = projectName || 'No project selected';
-    }
-}
-
-function setStatusGitBranch(branchName) {
     const branchEl = document.getElementById('status-git-branch');
-    if (branchEl) {
-        branchEl.textContent = branchName || '--';
-    }
-}
-
-function setStatusConnectionState(isConnected) {
+    const branchItemEl = document.querySelector('.status-item-branch');
     const connectionEl = document.getElementById('status-connection');
     const connectionDotEl = document.getElementById('status-connection-dot');
-
-    if (connectionEl) {
-        connectionEl.textContent = isConnected ? 'Connected' : 'Disconnected';
-    }
-
-    if (connectionDotEl) {
-        connectionDotEl.classList.toggle('status-online', isConnected);
-        connectionDotEl.classList.toggle('status-offline', !isConnected);
-    }
-}
-
-function updateStatusProjectCounts(totalProjects, recentCount = recentProjects.length) {
+    const connectionItemEl = document.querySelector('.status-item-connection');
     const totalProjectsEl = document.getElementById('status-project-count');
     const recentCountEl = document.getElementById('status-recent-count');
-    const heroRecentEl = document.getElementById('hero-recent');
+
+    const workspaceLabel = workspacePath || 'No workspace selected';
+    if (workspaceEl) {
+        workspaceEl.textContent = workspaceLabel;
+        workspaceEl.title = workspaceLabel;
+    }
+
+    if (viewEl) {
+        viewEl.textContent = statusBarState.currentView || 'Dashboard';
+    }
+
+    if (projectNameEl) {
+        projectNameEl.textContent = statusBarState.projectName || 'No project selected';
+    }
+
+    const branchName = statusBarState.branchName || '--';
+    if (branchEl) {
+        branchEl.textContent = branchName;
+    }
+    if (branchItemEl) {
+        branchItemEl.classList.toggle('status-branch-empty', !branchName || branchName === '--');
+    }
+
+    if (connectionEl) {
+        connectionEl.textContent = statusBarState.connected ? 'Connected' : 'Disconnected';
+    }
+    if (connectionDotEl) {
+        connectionDotEl.classList.toggle('status-online', statusBarState.connected);
+        connectionDotEl.classList.toggle('status-offline', !statusBarState.connected);
+    }
+    if (connectionItemEl) {
+        connectionItemEl.classList.toggle('status-connected', statusBarState.connected);
+        connectionItemEl.classList.toggle('status-disconnected', !statusBarState.connected);
+    }
 
     if (totalProjectsEl) {
-        totalProjectsEl.textContent = String(totalProjects || 0);
+        totalProjectsEl.textContent = String(statusBarState.totalProjects);
     }
 
     if (recentCountEl) {
-        recentCountEl.textContent = String(recentCount || 0);
+        recentCountEl.textContent = String(statusBarState.recentProjects);
     }
 
-    if (heroRecentEl) {
-        heroRecentEl.textContent = String(recentCount || 0);
+    updateStatusClockDisplay();
+    applyStatusMessageState(resolveStatusMessageState());
+    renderStatusUpdateProgressIndicator();
+}
+
+function scheduleStatusBarRefresh(options = {}) {
+    const immediate = options.immediate === true;
+    if (immediate) {
+        if (statusBarRefreshTimer) {
+            clearTimeout(statusBarRefreshTimer);
+            statusBarRefreshTimer = null;
+        }
+        renderStatusBarState();
+        return;
     }
+
+    if (statusBarRefreshTimer) {
+        return;
+    }
+
+    statusBarRefreshTimer = setTimeout(() => {
+        statusBarRefreshTimer = null;
+        renderStatusBarState();
+    }, 90);
+}
+
+function setStatusTransientMessage(message, options = {}) {
+    const safeMessage = String(message || '').trim();
+    if (!safeMessage) {
+        return;
+    }
+
+    const requestedDuration = Number(options.durationMs);
+    const durationMs = Number.isFinite(requestedDuration)
+        ? Math.max(800, Math.min(20000, Math.round(requestedDuration)))
+        : 3000;
+
+    statusBarState.overrideMessage = safeMessage;
+    statusBarState.overrideSeverity = sanitizeStatusSeverity(options.severity || inferStatusSeverityFromText(safeMessage));
+    statusBarState.overrideExpiresAt = Date.now() + durationMs;
+
+    if (statusMessageTimeout) {
+        clearTimeout(statusMessageTimeout);
+    }
+
+    statusMessageTimeout = setTimeout(() => {
+        statusBarState.overrideMessage = '';
+        statusBarState.overrideExpiresAt = 0;
+        statusMessageTimeout = null;
+        scheduleStatusBarRefresh({ immediate: true });
+    }, durationMs);
+
+    scheduleStatusBarRefresh({ immediate: true });
+}
+
+function setStatusCurrentView(viewLabel) {
+    statusBarState.currentView = viewLabel || 'Dashboard';
+    scheduleStatusBarRefresh();
+}
+
+function setStatusProjectName(projectName) {
+    statusBarState.projectName = projectName || 'No project selected';
+    scheduleStatusBarRefresh();
+}
+
+function setStatusGitBranch(branchName) {
+    statusBarState.branchName = branchName || '--';
+    scheduleStatusBarRefresh();
+}
+
+function setStatusConnectionState(isConnected) {
+    statusBarState.connected = Boolean(isConnected);
+    scheduleStatusBarRefresh();
+}
+
+function updateStatusProjectCounts(totalProjects, recentCount = recentProjects.length) {
+    const heroRecentEl = document.getElementById('hero-recent');
+    const safeTotalProjects = Number.isFinite(Number(totalProjects)) ? Math.max(0, Number(totalProjects)) : 0;
+    const safeRecentProjects = Number.isFinite(Number(recentCount)) ? Math.max(0, Number(recentCount)) : 0;
+
+    statusBarState.totalProjects = safeTotalProjects;
+    statusBarState.recentProjects = safeRecentProjects;
+
+    if (heroRecentEl) {
+        heroRecentEl.textContent = String(safeRecentProjects);
+    }
+
+    scheduleStatusBarRefresh();
 }
 
 function initializeStatusBar() {
-    setStatusCurrentView(getViewLabel(currentView));
-    setStatusProjectName(currentProject ? currentProject.name : null);
-    setStatusGitBranch(currentProject ? 'main' : '--');
-    setStatusConnectionState(Boolean(githubUserData));
-    updateStatusProjectCounts(document.querySelectorAll('#all-projects-list .project-card-modern').length, recentProjects.length);
+    statusBarState.currentView = getViewLabel(currentView);
+    statusBarState.projectName = currentProject ? currentProject.name : 'No project selected';
+    statusBarState.branchName = currentProject ? 'main' : '--';
+    statusBarState.connected = Boolean(githubUserData);
+    statusBarState.totalProjects = document.querySelectorAll('#all-projects-list .project-card-modern').length;
+    statusBarState.recentProjects = Array.isArray(recentProjects) ? recentProjects.length : 0;
+    const heroRecentEl = document.getElementById('hero-recent');
+    if (heroRecentEl) {
+        heroRecentEl.textContent = String(statusBarState.recentProjects);
+    }
+
+    startStatusClockTimer();
     applyAppVersionDisplays();
+    scheduleStatusBarRefresh({ immediate: true });
+    void refreshStatusBranch();
 }
 
-function refreshStatusBar() {
-    setStatusCurrentView(getViewLabel(currentView));
-    setStatusProjectName(currentProject ? currentProject.name : null);
-    setStatusConnectionState(Boolean(githubUserData));
-    updateStatusProjectCounts(document.querySelectorAll('#all-projects-list .project-card-modern').length, recentProjects.length);
-    void refreshStatusBranch();
+function refreshStatusBar(options = {}) {
+    const { refreshBranch = true, immediate = false } = options;
+    statusBarState.currentView = getViewLabel(currentView);
+    statusBarState.projectName = currentProject ? currentProject.name : 'No project selected';
+    statusBarState.connected = Boolean(githubUserData);
+    statusBarState.totalProjects = document.querySelectorAll('#all-projects-list .project-card-modern').length;
+    statusBarState.recentProjects = Array.isArray(recentProjects) ? recentProjects.length : 0;
+    const heroRecentEl = document.getElementById('hero-recent');
+    if (heroRecentEl) {
+        heroRecentEl.textContent = String(statusBarState.recentProjects);
+    }
+
+    scheduleStatusBarRefresh({ immediate });
+    if (refreshBranch) {
+        void refreshStatusBranch();
+    }
 }
 
 // Settings functionality
 /* ────────────────────────────────────────
    Custom Dropdown — replaces native <select>
    ──────────────────────────────────────── */
-

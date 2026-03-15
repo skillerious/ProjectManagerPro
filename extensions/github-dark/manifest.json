@@ -1,0 +1,22 @@
+{
+  "id": "github-dark",
+  "name": "GitHub Dark",
+  "displayName": "GitHub Dark",
+  "description": "GitHub's official dark theme brought to your workspace. The same clean, professional aesthetic developers trust daily — familiar, readable, and beautifully understated.",
+  "author": "GitHub",
+  "version": "6.4.0",
+  "category": "themes",
+  "type": "themes",
+  "main": "theme.css",
+  "icon": "fa-github",
+  "rating": 4.7,
+  "downloads": 4800000,
+  "tags": ["dark", "clean", "professional", "github", "minimal"],
+  "colors": ["#0d1117", "#58a6ff", "#bc8cff", "#3fb950", "#d29922", "#f85149"],
+  "preview": {
+    "background": "#0d1117",
+    "accent": "#58a6ff",
+    "secondary": "#bc8cff",
+    "palette": ["#0d1117", "#58a6ff", "#bc8cff", "#3fb950", "#d29922", "#f85149"]
+  }
+}

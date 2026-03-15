@@ -1,0 +1,22 @@
+{
+  "id": "everforest-dark",
+  "name": "Everforest Dark",
+  "displayName": "Everforest Dark",
+  "description": "Comfortable and pleasant green-tinted theme designed for long coding sessions. Inspired by natural forest tones with soft green and earth colors that reduce eye fatigue.",
+  "author": "Sainnhe Park",
+  "version": "1.4.0",
+  "category": "themes",
+  "type": "themes",
+  "main": "theme.css",
+  "icon": "fa-tree",
+  "rating": 4.7,
+  "downloads": 980000,
+  "tags": ["dark", "green", "nature", "soft"],
+  "colors": ["#2d353b", "#a7c080", "#83c092", "#7fbbb3", "#dbbc7f", "#e67e80"],
+  "preview": {
+    "background": "#2d353b",
+    "accent": "#a7c080",
+    "secondary": "#83c092",
+    "palette": ["#2d353b", "#a7c080", "#83c092", "#7fbbb3", "#dbbc7f", "#e67e80"]
+  }
+}

@@ -1,0 +1,54 @@
+/* ============================================
+   Kanagawa
+   Inspired by Hokusai's Great Wave
+   Author: rebelot
+   ============================================ */
+
+:root {
+  --bg-primary: #1f1f28;
+  --bg-secondary: #16161d;
+  --bg-tertiary: #2a2a37;
+  --bg-hover: #363646;
+  --text-primary: #dcd7ba;
+  --text-secondary: #727169;
+  --text-highlight: #e6e0c2;
+  --accent-primary: #7e9cd8;
+  --accent-secondary: #957fb8;
+  --accent-hover: #6a8bc7;
+  --border-color: #3a3a4a;
+  --success: #98bb6c;
+  --warning: #e6c384;
+  --error: #c34043;
+  --info: #7fb4ca;
+}
+
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 20px rgba(126, 156, 216, 0.14);
+}
+
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

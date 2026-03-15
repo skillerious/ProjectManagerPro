@@ -5,6 +5,7 @@ const DEFAULT_CACHE_TTL_MS = 5000;
 const MAX_SCAN_DEPTH = 3;
 const MAX_PROJECTS_PER_SCAN = 4000;
 const MAX_WORKSPACE_CACHE_ENTRIES = 24;
+const MAX_ROOT_PATH_LENGTH = 4096;
 const MAX_PACKAGE_JSON_SIZE_BYTES = 1024 * 1024;
 const MAX_PROJECT_DESCRIPTION_LENGTH = 280;
 const SKIPPED_DIRECTORIES = new Set([
@@ -39,7 +40,17 @@ function normalizeRootPath(rootPath) {
   if (typeof rootPath !== 'string' || !rootPath.trim()) {
     return '';
   }
-  return path.resolve(rootPath.trim());
+
+  const trimmed = rootPath.trim();
+  if (trimmed.length > MAX_ROOT_PATH_LENGTH || /[\0\r\n]/.test(trimmed)) {
+    return '';
+  }
+
+  try {
+    return path.resolve(trimmed);
+  } catch {
+    return '';
+  }
 }
 
 function classifyProjectType(entryNames) {
@@ -193,6 +204,10 @@ class ProjectDiscoveryService {
 
       for (const entry of entries) {
         if (!entry.isDirectory()) {
+          continue;
+        }
+
+        if (typeof entry.isSymbolicLink === 'function' && entry.isSymbolicLink() === true) {
           continue;
         }
 

@@ -1,0 +1,22 @@
+{
+  "id": "catppuccin-mocha",
+  "name": "Catppuccin Mocha",
+  "displayName": "Catppuccin Mocha",
+  "description": "A soothing pastel theme for the high-spirited. Mocha is the darkest variant with rich chocolate backgrounds and creamy pastel accents that feel warm without sacrificing readability.",
+  "author": "Catppuccin",
+  "version": "3.1.0",
+  "category": "themes",
+  "type": "themes",
+  "main": "theme.css",
+  "icon": "fa-mug-hot",
+  "rating": 4.9,
+  "downloads": 4200000,
+  "tags": ["dark", "pastel", "warm", "catppuccin", "popular"],
+  "colors": ["#1e1e2e", "#cba6f7", "#f5c2e7", "#a6e3a1", "#f9e2af", "#f38ba8"],
+  "preview": {
+    "background": "#1e1e2e",
+    "accent": "#cba6f7",
+    "secondary": "#f5c2e7",
+    "palette": ["#1e1e2e", "#cba6f7", "#f5c2e7", "#a6e3a1", "#f9e2af", "#f38ba8"]
+  }
+}

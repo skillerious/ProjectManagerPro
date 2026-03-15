@@ -1,0 +1,22 @@
+{
+  "id": "one-dark-pro",
+  "name": "One Dark Pro",
+  "displayName": "One Dark Pro",
+  "description": "Atom's iconic One Dark theme, faithfully adapted. A perfectly balanced dark theme with soft blue-grey tones and thoughtfully saturated syntax colors beloved by millions.",
+  "author": "binaryify",
+  "version": "3.16.0",
+  "category": "themes",
+  "type": "themes",
+  "main": "theme.css",
+  "icon": "fa-atom",
+  "rating": 4.8,
+  "downloads": 7200000,
+  "tags": ["dark", "atom", "balanced", "classic", "popular"],
+  "colors": ["#282c34", "#61afef", "#c678dd", "#98c379", "#e5c07b", "#e06c75"],
+  "preview": {
+    "background": "#282c34",
+    "accent": "#61afef",
+    "secondary": "#c678dd",
+    "palette": ["#282c34", "#61afef", "#c678dd", "#98c379", "#e5c07b", "#e06c75"]
+  }
+}

@@ -1,0 +1,47 @@
+/* ============================================
+   Rosé Pine
+   All natural pine, faux fur and soho vibes
+   Author: Rosé Pine
+   ============================================ */
+
+:root {
+  --bg-primary: #191724;
+  --bg-secondary: #1f1d2e;
+  --bg-tertiary: #26233a;
+  --bg-hover: #2a2740;
+  --text-primary: #e0def4;
+  --text-secondary: #908caa;
+  --text-highlight: #e0def4;
+  --accent-primary: #c4a7e7;
+  --accent-secondary: #ebbcba;
+  --accent-hover: #b094d4;
+  --border-color: #393552;
+  --success: #9ccfd8;
+  --warning: #f6c177;
+  --error: #eb6f92;
+  --info: #31748f;
+}
+
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 20px rgba(196, 167, 231, 0.15);
+}
+
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+
+.stat-card { background: var(--bg-tertiary); }
+.modal-content { background: var(--bg-secondary); }

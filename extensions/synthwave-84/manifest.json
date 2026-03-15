@@ -1,0 +1,22 @@
+{
+  "id": "synthwave-84",
+  "name": "SynthWave '84",
+  "displayName": "SynthWave '84",
+  "description": "Retro-futuristic neon theme inspired by the music and aesthetics of the 1980s. Vivid pinks, electric cyans, and deep purple hues bring a nostalgic synthwave atmosphere to your workspace.",
+  "author": "Robb Owen",
+  "version": "1.2.0",
+  "category": "themes",
+  "type": "themes",
+  "main": "theme.css",
+  "icon": "fa-wave-square",
+  "rating": 4.9,
+  "downloads": 3200000,
+  "tags": ["dark", "neon", "retro", "synthwave", "vibrant"],
+  "colors": ["#262335", "#ff7edb", "#36f9f6", "#72f1b8", "#fede5d", "#fe4450"],
+  "preview": {
+    "background": "#262335",
+    "accent": "#ff7edb",
+    "secondary": "#36f9f6",
+    "palette": ["#262335", "#ff7edb", "#36f9f6", "#72f1b8", "#fede5d", "#fe4450"]
+  }
+}

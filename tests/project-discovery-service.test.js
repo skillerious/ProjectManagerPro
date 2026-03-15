@@ -27,7 +27,7 @@ test('project discovery finds expected project types and supports query filterin
   const service = new ProjectDiscoveryService();
   const allProjects = await service.searchProjects(workspace, '');
 
-  assert.equal(allProjects.length >= 3, true);
+  assert.equal(allProjects.length, 3, `Expected exactly 3 projects but found ${allProjects.length}`);
   const discoveredNodeProject = allProjects.find((project) => project.path === nodeProject);
   assert.ok(discoveredNodeProject);
   assert.equal(discoveredNodeProject.type, 'nodejs');
@@ -106,4 +106,44 @@ test('project discovery shares a single in-flight scan for concurrent requests',
     firstResult[0].name = 'mutated-name';
     assert.equal(secondResult[0].name, originalName);
   }
+});
+
+test('project discovery returns empty results for malformed root paths', async () => {
+  const service = new ProjectDiscoveryService();
+
+  const newlinePathResult = await service.getProjects('C:\\invalid\npath');
+  assert.deepEqual(newlinePathResult, []);
+
+  const nulPathResult = await service.searchProjects('C:\\invalid\0path', 'anything');
+  assert.deepEqual(nulPathResult, []);
+});
+
+test('project discovery skips symbolic link directories during scan', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'appmanager-discovery-symlink-'));
+  const workspace = path.join(root, 'workspace');
+  const realProject = path.join(workspace, 'real-project');
+
+  await fs.mkdir(realProject, { recursive: true });
+  await fs.writeFile(path.join(realProject, 'package.json'), JSON.stringify({ name: 'real' }), 'utf8');
+
+  // Create a symlink directory alongside the real project
+  const symlinkTarget = path.join(workspace, 'link-target');
+  await fs.mkdir(symlinkTarget, { recursive: true });
+  await fs.writeFile(path.join(symlinkTarget, 'package.json'), JSON.stringify({ name: 'linked' }), 'utf8');
+
+  const symlinkPath = path.join(workspace, 'symlinked-project');
+  try {
+    await fs.symlink(symlinkTarget, symlinkPath, 'junction');
+  } catch {
+    // Symlink creation may fail without admin privileges on Windows; skip test
+    return;
+  }
+
+  const service = new ProjectDiscoveryService();
+  const projects = await service.searchProjects(workspace, '');
+
+  // real-project and link-target should be found, but the symlinked-project should be skipped
+  const foundSymlink = projects.find((p) => p.path === symlinkPath);
+  assert.equal(foundSymlink, undefined, 'Symlinked directory should be excluded from discovery');
+  assert.ok(projects.find((p) => p.path === realProject), 'Real project should be discovered');
 });

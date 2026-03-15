@@ -63,6 +63,7 @@ let updateState = {
     available: false,
     downloaded: false,
     downloadProgress: 0,
+    backgroundDownloadActive: false,
     currentVersion: '',
     channel: 'stable',
     availableChannels: ['stable', 'beta', 'alpha'],
@@ -116,6 +117,10 @@ let githubUploadExpandedPaths = new Set();
 let githubUploadSearchQuery = '';
 let githubUploadSortField = 'name';
 let githubUploadSortDirection = 'asc';
+let githubUploadExcludePatterns = [];
+let githubUploadExcludeDraft = '';
+let githubUploadExcludeRegexes = [];
+let githubUploadExcludedByPatternCount = 0;
 let githubUploadActiveProjectPath = '';
 let githubUploadUiInitialized = false;
 let githubUploadLoadingCandidates = false;
@@ -147,9 +152,13 @@ let logViewerController = null;
 const rendererFaultRecentReports = new Map();
 let rendererFaultReportingInitialized = false;
 
-const SETTINGS_EXTENSION_UPDATE_INTERVALS = new Set(['hourly', 'daily', 'weekly', 'never']);
+const SETTINGS_EXTENSION_UPDATE_INTERVALS = new Set(['hourly', 'daily', 'weekly', 'monthly', 'never']);
 const SETTINGS_TERMINAL_APPS = new Set(['cmd', 'powershell', 'wt', 'bash']);
 const SETTINGS_UPDATE_CHANNELS = new Set(['stable', 'beta', 'alpha']);
+const SETTINGS_STATUS_TIME_FORMATS = new Set(['system', '24h', '12h']);
+const SETTINGS_DEFAULT_PROJECT_TEMPLATES = new Set(['blank', 'nodejs', 'python', 'react', 'web']);
+const SETTINGS_EDITOR_OPEN_MODES = new Set(['new-window', 'reuse-window']);
+const SETTINGS_EDITOR_WORD_WRAP = new Set(['off', 'on', 'wordWrapColumn']);
 const SETTINGS_FORM_INPUT_SELECTOR = '#settings-view .setting-item input, #settings-view .setting-item select, #settings-view .setting-item textarea';
 const SETTINGS_SMART_DIALOG_EXIT_MS = 180;
 const UPDATE_SMART_DIALOG_EXIT_MS = 200;
@@ -196,6 +205,30 @@ const GITHUB_UPLOAD_DEFAULT_EXCLUDED_DIRS = new Set([
     'coverage'
 ]);
 const GITHUB_UPLOAD_AUTO_DESELECT_FILE_SIZE_BYTES = 95 * 1024 * 1024;
+const GITHUB_UPLOAD_SMART_EXCLUDE_FILE_SIZE_BYTES = 50 * 1024 * 1024;
+const GITHUB_UPLOAD_SMART_EXCLUDE_EXTENSIONS = new Set([
+    'exe',
+    'dll',
+    'msi',
+    'asar',
+    'dmg',
+    'pkg',
+    'deb',
+    'rpm',
+    'apk',
+    'ipa',
+    'iso',
+    'img',
+    'bin',
+    'zip',
+    '7z',
+    'rar',
+    'gz',
+    'tar',
+    'mp4',
+    'mov',
+    'avi'
+]);
 const pathExistsCache = new Map();
 const gitRepositoryCache = new Map();
 const gitProjectsDropdownCache = createExpiringAsyncCache({
@@ -254,4 +287,3 @@ async function isGitRepositoryOnDisk(targetPath) {
         return false;
     }
 }
-

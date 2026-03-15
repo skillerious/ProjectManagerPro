@@ -4,6 +4,7 @@ const fs = require('fs').promises;
 const { exec, execFile, spawn } = require('child_process');
 const os = require('os');
 const crypto = require('crypto');
+const { pathToFileURL } = require('url');
 const chokidar = require('chokidar');
 const {
   validateGitPath,
@@ -25,6 +26,20 @@ const { createLicenseManager } = require('./main/license/license-manager');
 const { createWindowSecurityManager } = require('./main/window-security-manager');
 const { createWindowsCommandUtils } = require('./main/windows-command-utils');
 const { createVsCodeLauncherService } = require('./main/vscode-launcher-service');
+const {
+  createElectronProject,
+  createPythonProject,
+  createWebProject,
+  createNodeProject,
+  createReactProject,
+  createVueProject,
+  createCppProject,
+  createJavaProject,
+  createEmptyProject
+} = require('./main/project-template-builders');
+const { registerSettingsAndFileDialogIpcHandlers } = require('./main/ipc/settings-file-dialog-handlers');
+const { registerUpdateWorkspaceSystemIpcHandlers } = require('./main/ipc/update-workspace-system-handlers');
+const { registerExtensionIpcHandlers } = require('./main/ipc/extension-handlers');
 const {
   GITHUB_TOKEN_ENCRYPTED_KEY,
   GITHUB_TOKEN_LEGACY_KEY,
@@ -67,8 +82,44 @@ const GITHUB_REQUEST_TIMEOUT_MS = 15000;
 const GIT_PUSH_TIMEOUT_MS = 10 * 60 * 1000;
 const MAX_GITHUB_UPLOAD_CANDIDATES = 12000;
 const MAX_GITHUB_UPLOAD_DEPTH = 24;
+const MAX_GITHUB_UPLOAD_EXCLUDE_PATTERNS = 120;
+const MAX_GITHUB_UPLOAD_EXCLUDE_PATTERN_LENGTH = 260;
 const GITHUB_UPLOAD_STAGE_CHUNK_SIZE = 120;
 const GITHUB_UPLOAD_TEMP_PREFIX = 'project-manager-github-upload-';
+const PROJECT_ARTWORK_SCAN_MAX_DEPTH = 5;
+const PROJECT_ARTWORK_ASSETS_SCAN_MAX_DEPTH = 3;
+const PROJECT_ARTWORK_FALLBACK_SCAN_MAX_DEPTH = 2;
+const MAX_PROJECT_ARTWORK_CANDIDATES = 24;
+const PROJECT_ARTWORK_MAX_FILE_SIZE_BYTES = 12 * 1024 * 1024;
+const PROJECT_ARTWORK_IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.svg', '.ico']);
+const PROJECT_ARTWORK_SKIP_DIRS = new Set([
+  '.git',
+  'node_modules',
+  'dist',
+  'build',
+  'out',
+  'coverage',
+  '.next',
+  '.nuxt',
+  '.cache',
+  '.turbo',
+  '.parcel-cache'
+]);
+const PROJECT_ARTWORK_SIGNAL_DIRS = new Set([
+  'assets',
+  'public',
+  'static',
+  'images',
+  'image',
+  'img',
+  'icons',
+  'icon',
+  'branding',
+  'brand',
+  'resources',
+  'resource',
+  'res'
+]);
 const GITHUB_UPLOAD_HARD_EXCLUDED_DIRS = new Set([
   'node_modules',
   'dist',
@@ -205,6 +256,300 @@ function normalizePathSegmentForComparison(value) {
     return '';
   }
   return process.platform === 'win32' ? value.toLowerCase() : value;
+}
+
+function isLikelyProjectArtworkFileName(fileName = '') {
+  const normalizedName = String(fileName || '').trim().toLowerCase();
+  if (!normalizedName) {
+    return false;
+  }
+
+  if (/^(logo|logomark|wordmark|brand|branding|icon|appicon|favicon)([-_.][a-z0-9]+)*\.[a-z0-9]+$/i.test(normalizedName)) {
+    return true;
+  }
+
+  return (
+    normalizedName.includes('logo') ||
+    normalizedName.includes('logomark') ||
+    normalizedName.includes('wordmark') ||
+    normalizedName.includes('appicon') ||
+    normalizedName.includes('favicon')
+  );
+}
+
+function isLikelyProjectArtworkPath(relativePath = '') {
+  const normalizedPath = String(relativePath || '').replace(/\\/g, '/').toLowerCase();
+  if (!normalizedPath) {
+    return false;
+  }
+
+  return /(^|\/)(logo|logos|branding|brand|icon|icons|favicon|appicon)(\/|[-_.])/.test(normalizedPath);
+}
+
+async function readProjectArtworkMetadata(absolutePath, extension = '') {
+  let fileSizeBytes = 0;
+  let width = 0;
+  let height = 0;
+
+  try {
+    const stats = await fs.stat(absolutePath);
+    fileSizeBytes = Number(stats?.size) || 0;
+  } catch {
+    fileSizeBytes = 0;
+  }
+
+  // SVG dimensions are often inferred at runtime, so bitmap dimensions are most reliable here.
+  if (extension !== '.svg' && fileSizeBytes > 0 && fileSizeBytes <= (PROJECT_ARTWORK_MAX_FILE_SIZE_BYTES * 2)) {
+    try {
+      const image = nativeImage.createFromPath(absolutePath);
+      if (image && !image.isEmpty()) {
+        const size = image.getSize();
+        width = Number(size?.width) || 0;
+        height = Number(size?.height) || 0;
+      }
+    } catch {
+      width = 0;
+      height = 0;
+    }
+  }
+
+  return {
+    fileSizeBytes,
+    width,
+    height
+  };
+}
+
+function scoreProjectArtworkCandidate(relativePath = '', fileName = '', metadata = {}) {
+  const normalizedPath = String(relativePath || '').replace(/\\/g, '/').toLowerCase();
+  const normalizedName = String(fileName || '').toLowerCase();
+  const extension = path.extname(normalizedName).toLowerCase();
+  const width = Number(metadata.width) || 0;
+  const height = Number(metadata.height) || 0;
+  const fileSizeBytes = Number(metadata.fileSizeBytes) || 0;
+  let score = 12;
+
+  if (normalizedName === 'logo.png') score += 160;
+  if (/^logo(\.|[-_])/i.test(normalizedName)) score += 95;
+  if (/^(app[-_.]?icon|favicon)/i.test(normalizedName)) score += 48;
+  if (normalizedName.includes('logo')) score += 58;
+  if (normalizedName.includes('logomark') || normalizedName.includes('wordmark')) score += 42;
+  if (normalizedName.includes('brand') || normalizedName.includes('branding')) score += 36;
+  if (normalizedName.includes('icon') || normalizedName.includes('mark')) score += 26;
+  if (isLikelyProjectArtworkFileName(normalizedName)) score += 24;
+
+  if (normalizedPath.startsWith('assets/')) score += 24;
+  if (normalizedPath.includes('/assets/')) score += 18;
+  if (normalizedPath.startsWith('public/') || normalizedPath.includes('/public/')) score += 12;
+  if (normalizedPath.includes('/icons/') || normalizedPath.includes('/icon/')) score += 16;
+  if (normalizedPath.includes('/branding/') || normalizedPath.includes('/brand/')) score += 16;
+  if (normalizedPath.includes('/images/') || normalizedPath.includes('/img/')) score += 10;
+
+  if (extension === '.png') score += 10;
+  if (extension === '.svg') score += 8;
+  if (extension === '.webp') score += 7;
+  if (extension === '.jpg' || extension === '.jpeg') score += 5;
+  if (extension === '.ico') score += 3;
+
+  if (width > 0 && height > 0) {
+    const minEdge = Math.min(width, height);
+    const maxEdge = Math.max(width, height);
+    const ratio = minEdge > 0 ? (maxEdge / minEdge) : 99;
+
+    if (ratio <= 1.1) score += 24;
+    else if (ratio <= 1.35) score += 14;
+    else if (ratio <= 2.2) score += 5;
+    else score -= 8;
+
+    if (width >= 96 && height >= 96) score += 9;
+    if (width >= 256 && height >= 256) score += 8;
+    if (width < 48 || height < 48) score -= 20;
+    if (width > 2048 || height > 2048) score -= 8;
+  }
+
+  if (fileSizeBytes > 0) {
+    if (fileSizeBytes < 4 * 1024) score -= 12;
+    else if (fileSizeBytes <= 900 * 1024) score += 6;
+    else if (fileSizeBytes > 6 * 1024 * 1024) score -= 15;
+    if (fileSizeBytes > PROJECT_ARTWORK_MAX_FILE_SIZE_BYTES) score -= 36;
+  }
+
+  if (normalizedName.includes('sprite') || normalizedName.includes('sheet')) score -= 28;
+  if (normalizedPath.includes('/mock') || normalizedPath.includes('/fixture') || normalizedPath.includes('/test')) score -= 8;
+
+  // Prefer cleaner/shorter relative paths when quality is similar.
+  score -= Math.min(24, Math.floor(normalizedPath.length / 12));
+  return score;
+}
+
+async function collectProjectArtworkCandidates(projectRoot) {
+  const discovered = [];
+  const seen = new Set();
+  let scannedAssetsFolders = 0;
+  let scannedArtworkDirectories = 0;
+
+  const appendCandidate = async (absolutePath, relativePath, options = {}) => {
+    const normalizedRelativePath = String(relativePath || '').replace(/\\/g, '/').trim();
+    if (!normalizedRelativePath || seen.has(normalizedRelativePath.toLowerCase())) {
+      return;
+    }
+
+    const extension = path.extname(normalizedRelativePath).toLowerCase();
+    if (!PROJECT_ARTWORK_IMAGE_EXTENSIONS.has(extension)) {
+      return;
+    }
+
+    const fileName = path.basename(normalizedRelativePath);
+    const requireArtworkFileName = options.requireArtworkFileName === true;
+    if (requireArtworkFileName && !isLikelyProjectArtworkFileName(fileName)) {
+      return;
+    }
+
+    const hasArtworkSignal = isLikelyProjectArtworkFileName(fileName) || isLikelyProjectArtworkPath(normalizedRelativePath);
+
+    const metadata = await readProjectArtworkMetadata(absolutePath, extension);
+    if (metadata.fileSizeBytes > PROJECT_ARTWORK_MAX_FILE_SIZE_BYTES) {
+      return;
+    }
+
+    const score = scoreProjectArtworkCandidate(normalizedRelativePath, fileName, metadata);
+    const minimumScore = options.fallback === true
+      ? 30
+      : (hasArtworkSignal ? 16 : 40);
+    if (score < minimumScore) {
+      return;
+    }
+
+    seen.add(normalizedRelativePath.toLowerCase());
+    discovered.push({
+      relativePath: normalizedRelativePath,
+      fileName,
+      score,
+      extension,
+      fileSizeBytes: metadata.fileSizeBytes,
+      width: metadata.width,
+      height: metadata.height,
+      fileUrl: pathToFileURL(absolutePath).toString()
+    });
+  };
+
+  const scanArtworkDirectory = async (directoryAbsPath, directoryRelPath, depth = 0) => {
+    if (depth > PROJECT_ARTWORK_ASSETS_SCAN_MAX_DEPTH || discovered.length >= MAX_PROJECT_ARTWORK_CANDIDATES) {
+      return;
+    }
+
+    let entries = [];
+    try {
+      entries = await fs.readdir(directoryAbsPath, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+    for (const entry of entries) {
+      if (discovered.length >= MAX_PROJECT_ARTWORK_CANDIDATES) {
+        return;
+      }
+
+      const entryName = String(entry.name || '');
+      const entryLower = entryName.toLowerCase();
+      const entryAbsPath = path.join(directoryAbsPath, entryName);
+      const entryRelPath = directoryRelPath ? `${directoryRelPath}/${entryName}` : entryName;
+
+      if (entry.isDirectory()) {
+        if (PROJECT_ARTWORK_SKIP_DIRS.has(entryLower)) {
+          continue;
+        }
+        await scanArtworkDirectory(entryAbsPath, entryRelPath, depth + 1);
+        continue;
+      }
+
+      if (!entry.isFile()) {
+        continue;
+      }
+
+      await appendCandidate(entryAbsPath, entryRelPath, { fallback: false, requireArtworkFileName: false });
+    }
+  };
+
+  const queue = [{ absPath: projectRoot, relPath: '', depth: 0 }];
+  while (queue.length > 0 && discovered.length < MAX_PROJECT_ARTWORK_CANDIDATES) {
+    const current = queue.shift();
+    if (!current) {
+      continue;
+    }
+
+    let entries = [];
+    try {
+      entries = await fs.readdir(current.absPath, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+
+    for (const entry of entries) {
+      const entryName = String(entry.name || '');
+      const entryLower = entryName.toLowerCase();
+      const entryAbsPath = path.join(current.absPath, entryName);
+      const entryRelPath = current.relPath ? `${current.relPath}/${entryName}` : entryName;
+
+      if (entry.isFile()) {
+        if (current.depth <= PROJECT_ARTWORK_FALLBACK_SCAN_MAX_DEPTH && isLikelyProjectArtworkFileName(entryName)) {
+          await appendCandidate(entryAbsPath, entryRelPath, { fallback: true, requireArtworkFileName: true });
+        }
+        continue;
+      }
+
+      if (!entry.isDirectory()) {
+        continue;
+      }
+
+      if (PROJECT_ARTWORK_SKIP_DIRS.has(entryLower)) {
+        continue;
+      }
+
+      if (PROJECT_ARTWORK_SIGNAL_DIRS.has(entryLower)) {
+        if (entryLower === 'assets') {
+          scannedAssetsFolders += 1;
+        }
+        scannedArtworkDirectories += 1;
+        await scanArtworkDirectory(entryAbsPath, entryRelPath, 0);
+        continue;
+      }
+
+      if (current.depth < PROJECT_ARTWORK_SCAN_MAX_DEPTH) {
+        queue.push({
+          absPath: entryAbsPath,
+          relPath: entryRelPath.replace(/\\/g, '/'),
+          depth: current.depth + 1
+        });
+      }
+    }
+  }
+
+  discovered.sort((a, b) => {
+    if (b.score !== a.score) {
+      return b.score - a.score;
+    }
+
+    const areaA = (Number(a.width) || 0) * (Number(a.height) || 0);
+    const areaB = (Number(b.width) || 0) * (Number(b.height) || 0);
+    if (areaB !== areaA) {
+      return areaB - areaA;
+    }
+
+    if (a.relativePath.length !== b.relativePath.length) {
+      return a.relativePath.length - b.relativePath.length;
+    }
+
+    return a.relativePath.localeCompare(b.relativePath, undefined, { numeric: true, sensitivity: 'base' });
+  });
+
+  return {
+    candidates: discovered.slice(0, MAX_PROJECT_ARTWORK_CANDIDATES),
+    scannedAssetsFolders,
+    scannedArtworkDirectories
+  };
 }
 
 function resolveProjectCreationPath(projectName, requestedPath, fallbackBasePath = projectsBasePath, options = {}) {
@@ -721,7 +1066,13 @@ class ExtensionManager {
       }
 
       const cssFile = theme.manifest?.main || 'theme.css';
-      const cssPath = path.join(theme.path, cssFile);
+      const cssPath = path.resolve(theme.path, cssFile);
+      // Prevent path traversal via manifest.main
+      const compareThemePath = process.platform === 'win32' ? theme.path.toLowerCase() : theme.path;
+      const compareCssPath = process.platform === 'win32' ? cssPath.toLowerCase() : cssPath;
+      if (!compareCssPath.startsWith(`${compareThemePath}${path.sep}`) && compareCssPath !== compareThemePath) {
+        return { success: false, error: 'Theme main file path is invalid' };
+      }
       const css = await fs.readFile(cssPath, 'utf-8');
 
       return { success: true, css, colors: theme.manifest?.colors || {} };
@@ -732,13 +1083,26 @@ class ExtensionManager {
   }
 
   // Download theme from URL (supports GitHub raw URLs)
+  // Only trusted hostnames are allowed to prevent arbitrary CSS injection.
+  static TRUSTED_THEME_HOSTS = new Set([
+    'raw.githubusercontent.com',
+    'gist.githubusercontent.com',
+    'github.com'
+  ]);
+
+  static MAX_THEME_CSS_BYTES = 512 * 1024; // 512 KB
+
   async downloadThemeFromURL(themeId, cssUrl, manifestData) {
     try {
       const https = require('https');
       const url = require('url');
 
+      const parsedUrl = url.parse(cssUrl);
+      if (!parsedUrl.hostname || !ExtensionManager.TRUSTED_THEME_HOSTS.has(parsedUrl.hostname)) {
+        return { success: false, error: `Theme downloads are only allowed from trusted hosts: ${[...ExtensionManager.TRUSTED_THEME_HOSTS].join(', ')}` };
+      }
+
       return new Promise((resolve) => {
-        const parsedUrl = url.parse(cssUrl);
         const options = {
           hostname: parsedUrl.hostname,
           path: parsedUrl.path,
@@ -750,7 +1114,16 @@ class ExtensionManager {
 
         https.get(options, (res) => {
           let cssData = '';
-          res.on('data', (chunk) => { cssData += chunk; });
+          let receivedBytes = 0;
+          res.on('data', (chunk) => {
+            receivedBytes += chunk.length;
+            if (receivedBytes > ExtensionManager.MAX_THEME_CSS_BYTES) {
+              res.destroy();
+              resolve({ success: false, error: 'Theme CSS exceeds maximum allowed size (512 KB)' });
+              return;
+            }
+            cssData += chunk;
+          });
           res.on('end', async () => {
             if (res.statusCode === 200) {
               const extensionData = {
@@ -994,6 +1367,28 @@ async function executeGitArgs(args, cwd, operation = 'Git Operation', options = 
   };
 }
 
+function buildGitFetchArgs() {
+  const args = ['fetch'];
+  if (appSettings.gitPruneOnFetch === true) {
+    args.push('--prune');
+  }
+  return args;
+}
+
+function buildGitPullArgs() {
+  const args = ['pull'];
+  if (appSettings.gitPruneOnFetch === true) {
+    args.push('--prune');
+  }
+  if (appSettings.gitUsePullRebase === true) {
+    args.push('--rebase');
+    if (appSettings.gitAutoStash === true) {
+      args.push('--autostash');
+    }
+  }
+  return args;
+}
+
 function splitUnifiedDiffIntoHunks(diffOutput) {
   const diffText = typeof diffOutput === 'string' ? diffOutput : '';
   if (!diffText.trim()) {
@@ -1061,7 +1456,11 @@ async function applyGitPatchToIndex(projectPath, patchText, { reverse = false } 
       cwd: projectPath,
       windowsHide: true,
       env: {
-        ...process.env,
+        PATH: process.env.PATH,
+        SYSTEMROOT: process.env.SYSTEMROOT,
+        HOME: process.env.HOME,
+        USERPROFILE: process.env.USERPROFILE,
+        LANG: process.env.LANG,
         GIT_TERMINAL_PROMPT: '0'
       },
       stdio: ['pipe', 'pipe', 'pipe']
@@ -1356,40 +1755,8 @@ async function executeGitPushWithProgress({
   });
 }
 
-// Git Command Wrapper with advanced error handling
-async function executeGitCommand(command, cwd, operation = 'Git Operation') {
-  return new Promise((resolve) => {
-    logger.info(`Executing: ${command}`, { cwd, operation });
-
-    exec(command, { cwd, timeout: 60000 }, (error, stdout, stderr) => {
-      if (error) {
-        logger.error(`Git command failed: ${command}`, {
-          error: error.message,
-          stderr,
-          cwd,
-          operation
-        });
-
-        // Provide user-friendly error messages
-        const userMessage = mapGitErrorToUserMessage(stderr, error.message);
-
-        resolve({
-          success: false,
-          error: userMessage,
-          stderr,
-          details: error.message
-        });
-      } else {
-        logger.info(`Git command succeeded: ${command}`, { stdout: stdout.substring(0, 200) });
-        resolve({
-          success: true,
-          output: stdout,
-          stderr
-        });
-      }
-    });
-  });
-}
+// Legacy executeGitCommand removed – all Git operations now use executeGitArgs
+// which calls execFile() (no shell) to prevent command injection.
 
 // ============================================
 // ADVANCED FEATURE 1: Real-Time File Watcher
@@ -1460,6 +1827,7 @@ function stopFileWatcher(projectPath) {
     }
 
     if (watcherEntry && watcherEntry.watcher) {
+      watcherEntry.watcher.removeAllListeners();
       watcherEntry.watcher.close();
     }
     fileWatchers.delete(normalizedProjectPath);
@@ -1619,10 +1987,10 @@ async function ensureProjectsDir() {
 }
 
 function createTray() {
-  const trayIconPath = path.join(__dirname, 'assets', 'logo.png');
+  const trayPngPath = path.join(__dirname, 'assets', 'trayicon.png');
   let trayIcon;
   try {
-    trayIcon = nativeImage.createFromPath(trayIconPath).resize({ width: 16, height: 16 });
+    trayIcon = nativeImage.createFromPath(trayPngPath).resize({ width: 32, height: 32, quality: 'best' });
   } catch {
     trayIcon = nativeImage.createEmpty();
   }
@@ -2195,9 +2563,14 @@ ipcMain.handle('maximize-window', () => {
   }
 });
 
-ipcMain.handle('close-window', () => {
+ipcMain.handle('close-window', (_event, opts) => {
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.close();
+    const wantsToTray = (opts && opts.closeToTray === true) || appSettings.closeToTray;
+    if (wantsToTray) {
+      mainWindow.hide();
+    } else {
+      mainWindow.close();
+    }
   }
 });
 
@@ -2227,98 +2600,25 @@ ipcMain.handle('cancel-app-close', () => {
   return true;
 });
 
-ipcMain.handle('select-folder', async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openDirectory'],
-    defaultPath: projectsBasePath
-  });
-
-  if (!result.canceled) {
-    projectsBasePath = result.filePaths[0];
-    return result.filePaths[0];
-  }
-  return null;
-});
-
-ipcMain.handle('select-file', async (event, options = {}) => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    properties: options.properties || ['openFile'],
-    filters: options.filters || [],
-    defaultPath: options.defaultPath || projectsBasePath
-  });
-
-  if (!result.canceled && result.filePaths.length > 0) {
-    return result.filePaths[0];
-  }
-  return null;
-});
-
-ipcMain.handle('get-projects-path', () => {
-  return projectsBasePath;
-});
-
-// Settings handlers
-ipcMain.handle('get-settings', () => {
-  return getRendererSafeSettings(appSettings);
-});
-
-ipcMain.handle('save-settings', async (event, settings) => {
-  const incomingSettings = settings && typeof settings === 'object' && !Array.isArray(settings)
-    ? settings
-    : {};
-  const previousTheme = appSettings.theme;
-  const previousUpdateChannel = appSettings.updateChannel;
-  const previousProjectsPath = projectsBasePath;
-  appSettings = sanitizeAppSettings({ ...appSettings, ...incomingSettings }, projectsBasePath);
-  projectsBasePath = appSettings.defaultProjectPath;
-  const success = await saveSettings();
-  if (success) {
-    await ensureProjectsDir();
-    if (previousProjectsPath !== projectsBasePath) {
-      projectDiscoveryService.invalidate();
-    }
-    if (previousUpdateChannel !== appSettings.updateChannel) {
-      updateManager.setChannel(appSettings.updateChannel);
-    }
-  }
-  if (
-    success &&
-    previousTheme !== appSettings.theme &&
-    mainWindow &&
-    !mainWindow.isDestroyed()
-  ) {
-    mainWindow.webContents.send('theme-changed', appSettings.theme);
-  }
-  return success;
-});
-
-// File dialog for saving
-ipcMain.handle('save-dialog', async (event, options) => {
-  const result = await dialog.showSaveDialog(mainWindow, options);
-  return result.filePath;
-});
-
-ipcMain.handle('path-exists', async (event, targetPath) => {
-  return rendererFileService.checkPathExists(targetPath);
-});
-
-ipcMain.handle('is-git-repository', async (event, targetPath) => {
-  return rendererFileService.checkGitRepositoryPath(targetPath);
-});
-
-ipcMain.handle('import-settings-file', async (event, filePath) => {
-  return rendererFileService.importSettingsFromJsonFile(filePath);
-});
-
-ipcMain.handle('export-settings-file', async (event, filePath, settingsPayload) => {
-  return rendererFileService.exportSettingsToJsonFile(filePath, settingsPayload);
-});
-
-// Reload window
-ipcMain.handle('reload-window', () => {
-  if (mainWindow) {
-    mainWindow.reload();
-  }
+registerSettingsAndFileDialogIpcHandlers({
+  ipcMain,
+  dialog,
+  getMainWindow: () => mainWindow,
+  getProjectsBasePath: () => projectsBasePath,
+  setProjectsBasePath: (nextPath) => {
+    projectsBasePath = nextPath;
+  },
+  getAppSettings: () => appSettings,
+  setAppSettings: (nextSettings) => {
+    appSettings = nextSettings;
+  },
+  sanitizeAppSettings,
+  saveSettings,
+  ensureProjectsDir,
+  projectDiscoveryService,
+  updateManager,
+  getRendererSafeSettings,
+  rendererFileService
 });
 
 // Git operations
@@ -2364,7 +2664,10 @@ ipcMain.handle('git-commit', async (event, projectPath, message) => {
     return addResult;
   }
 
-  const result = await executeGitArgs(['commit', '-m', normalizedMessage], validation.path, 'Commit');
+  const commitArgs = appSettings.gitSignCommits === true
+    ? ['commit', '-S', '-m', normalizedMessage]
+    : ['commit', '-m', normalizedMessage];
+  const result = await executeGitArgs(commitArgs, validation.path, 'Commit');
 
   // Record operation for undo functionality
   if (result.success) {
@@ -2391,7 +2694,7 @@ ipcMain.handle('git-pull', async (event, projectPath) => {
     logger.warn('Pull attempted with uncommitted changes', { projectPath: validation.path });
   }
 
-  return executeGitArgs(['pull'], validation.path, 'Pull');
+  return executeGitArgs(buildGitPullArgs(), validation.path, 'Pull');
 });
 
 // Git push with upstream tracking
@@ -2405,7 +2708,15 @@ ipcMain.handle('git-push', async (event, projectPath) => {
   let result = await executeGitArgs(['push'], validation.path, 'Push');
 
   // If it fails due to no upstream, try with -u origin HEAD
-  if (!result.success && result.stderr && result.stderr.includes('no upstream branch')) {
+  const pushErrorText = `${result.error || ''}\n${result.stderr || ''}`.toLowerCase();
+  if (
+    !result.success &&
+    (
+      pushErrorText.includes('no upstream branch')
+      || pushErrorText.includes('has no upstream branch')
+      || pushErrorText.includes('--set-upstream')
+    )
+  ) {
     logger.info('No upstream branch, setting up tracking', { projectPath: validation.path });
     result = await executeGitArgs(['push', '-u', 'origin', 'HEAD'], validation.path, 'Push with upstream');
   }
@@ -2420,7 +2731,7 @@ ipcMain.handle('git-fetch', async (event, projectPath) => {
     return { success: false, error: validation.error };
   }
 
-  return executeGitArgs(['fetch'], validation.path, 'Fetch');
+  return executeGitArgs(buildGitFetchArgs(), validation.path, 'Fetch');
 });
 
 // Git sync (pull then push)
@@ -2430,12 +2741,23 @@ ipcMain.handle('git-sync', async (event, projectPath) => {
     return { success: false, error: validation.error };
   }
 
-  const pullResult = await executeGitArgs(['pull'], validation.path, 'Sync Pull');
+  const pullResult = await executeGitArgs(buildGitPullArgs(), validation.path, 'Sync Pull');
   if (!pullResult.success) {
     return pullResult;
   }
 
-  const pushResult = await executeGitArgs(['push'], validation.path, 'Sync Push');
+  let pushResult = await executeGitArgs(['push'], validation.path, 'Sync Push');
+  const syncPushErrorText = `${pushResult.error || ''}\n${pushResult.stderr || ''}`.toLowerCase();
+  if (
+    !pushResult.success &&
+    (
+      syncPushErrorText.includes('no upstream branch')
+      || syncPushErrorText.includes('has no upstream branch')
+      || syncPushErrorText.includes('--set-upstream')
+    )
+  ) {
+    pushResult = await executeGitArgs(['push', '-u', 'origin', 'HEAD'], validation.path, 'Sync Push with upstream');
+  }
   if (!pushResult.success) {
     return pushResult;
   }
@@ -3331,6 +3653,128 @@ function normalizeGitHubUploadSelection(rawSelection) {
   return { valid: true, value: unique };
 }
 
+function normalizeGitHubUploadExcludePatterns(rawPatterns) {
+  if (rawPatterns == null) {
+    return { valid: true, value: [] };
+  }
+
+  if (!Array.isArray(rawPatterns)) {
+    return { valid: false, error: 'Exclude patterns are invalid' };
+  }
+
+  if (rawPatterns.length > MAX_GITHUB_UPLOAD_EXCLUDE_PATTERNS) {
+    return { valid: false, error: `Too many exclude patterns (max ${MAX_GITHUB_UPLOAD_EXCLUDE_PATTERNS})` };
+  }
+
+  const uniquePatterns = [];
+  const seen = new Set();
+
+  for (const rawPattern of rawPatterns) {
+    if (typeof rawPattern !== 'string') {
+      return { valid: false, error: 'Exclude patterns are invalid' };
+    }
+
+    const normalizedPattern = rawPattern
+      .replace(/\\/g, '/')
+      .trim()
+      .replace(/^\.\//, '')
+      .replace(/^\/+/, '')
+      .replace(/\/+/g, '/');
+
+    if (!normalizedPattern) {
+      continue;
+    }
+    if (
+      normalizedPattern.length > MAX_GITHUB_UPLOAD_EXCLUDE_PATTERN_LENGTH ||
+      /[\0\r\n]/.test(normalizedPattern) ||
+      normalizedPattern.startsWith('!')
+    ) {
+      return { valid: false, error: `Invalid exclude pattern: ${rawPattern}` };
+    }
+
+    const key = normalizedPattern.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    uniquePatterns.push(normalizedPattern);
+  }
+
+  return { valid: true, value: uniquePatterns };
+}
+
+function escapeRegexForGitHubUploadPattern(value) {
+  return String(value || '').replace(/[|\\{}()[\]^$+?.]/g, '\\$&');
+}
+
+function compileGitHubUploadExcludePattern(pattern) {
+  const normalizedPattern = typeof pattern === 'string'
+    ? pattern.replace(/\\/g, '/').trim()
+    : '';
+  if (!normalizedPattern) {
+    return null;
+  }
+
+  let regexSource = '';
+  for (let index = 0; index < normalizedPattern.length; index += 1) {
+    const character = normalizedPattern[index];
+    const nextCharacter = normalizedPattern[index + 1];
+    if (character === '*' && nextCharacter === '*') {
+      regexSource += '.*';
+      index += 1;
+      continue;
+    }
+    if (character === '*') {
+      regexSource += '[^/]*';
+      continue;
+    }
+    if (character === '?') {
+      regexSource += '[^/]';
+      continue;
+    }
+    regexSource += escapeRegexForGitHubUploadPattern(character);
+  }
+
+  if (!regexSource) {
+    return null;
+  }
+
+  const hasPathSeparator = normalizedPattern.includes('/');
+  const finalRegex = hasPathSeparator
+    ? `^${regexSource}$`
+    : `(?:^|/)${regexSource}$`;
+
+  try {
+    return new RegExp(finalRegex, 'i');
+  } catch {
+    return null;
+  }
+}
+
+function createGitHubUploadExcludeMatcher(patterns) {
+  if (!Array.isArray(patterns) || patterns.length === 0) {
+    return () => false;
+  }
+
+  const compiledPatterns = patterns
+    .map((pattern) => compileGitHubUploadExcludePattern(pattern))
+    .filter((compiled) => compiled instanceof RegExp);
+
+  if (compiledPatterns.length === 0) {
+    return () => false;
+  }
+
+  return (relativePath) => {
+    const normalizedPath = typeof relativePath === 'string'
+      ? relativePath.replace(/\\/g, '/').trim()
+      : '';
+    if (!normalizedPath) {
+      return false;
+    }
+    return compiledPatterns.some((regex) => regex.test(normalizedPath));
+  };
+}
+
 function isResolvedPathInsideRoot(rootPath, candidatePath) {
   const rootResolved = path.resolve(rootPath);
   const candidateResolved = path.resolve(candidatePath);
@@ -3402,7 +3846,14 @@ async function safeRemoveDirectory(targetPath) {
   }
 }
 
-async function copyGitHubUploadPathRecursive(sourcePath, destinationPath) {
+async function copyGitHubUploadPathRecursive(sourcePath, destinationPath, options = {}) {
+  const relativePath = typeof options.relativePath === 'string'
+    ? options.relativePath.replace(/\\/g, '/').trim()
+    : '';
+  const excludeMatcher = typeof options.excludeMatcher === 'function'
+    ? options.excludeMatcher
+    : null;
+
   const sourceBaseName = path.basename(sourcePath).toLowerCase();
   if (sourceBaseName === '.git' || GITHUB_UPLOAD_HARD_EXCLUDED_DIRS.has(sourceBaseName)) {
     return 0;
@@ -3410,6 +3861,9 @@ async function copyGitHubUploadPathRecursive(sourcePath, destinationPath) {
 
   const sourceStat = await fs.lstat(sourcePath);
   if (sourceStat.isSymbolicLink()) {
+    return 0;
+  }
+  if (excludeMatcher && relativePath && excludeMatcher(relativePath)) {
     return 0;
   }
 
@@ -3424,7 +3878,13 @@ async function copyGitHubUploadPathRecursive(sourcePath, destinationPath) {
       }
       const entrySourcePath = path.join(sourcePath, entry.name);
       const entryDestinationPath = path.join(destinationPath, entry.name);
-      copiedFiles += await copyGitHubUploadPathRecursive(entrySourcePath, entryDestinationPath);
+      const entryRelativePath = relativePath
+        ? `${relativePath}/${entry.name}`
+        : entry.name;
+      copiedFiles += await copyGitHubUploadPathRecursive(entrySourcePath, entryDestinationPath, {
+        ...options,
+        relativePath: entryRelativePath
+      });
     }
     return copiedFiles;
   }
@@ -3800,6 +4260,9 @@ async function handleGitHubUploadProjectRequest(sender, projectPath, repoData, c
   if (!repoValidation.valid) {
     return { success: false, error: repoValidation.error };
   }
+  if (repoValidation.value.mode !== 'create') {
+    return { success: false, error: 'Repository creation requires create mode' };
+  }
   const uploadMode = repoValidation.value.mode === 'existing' ? 'existing' : 'create';
   const forcePush = Boolean(repoValidation.value.forcePush);
 
@@ -3807,6 +4270,11 @@ async function handleGitHubUploadProjectRequest(sender, projectPath, repoData, c
   if (!selectionValidation.valid) {
     return { success: false, error: selectionValidation.error };
   }
+  const excludePatternValidation = normalizeGitHubUploadExcludePatterns(repoData?.excludePatterns);
+  if (!excludePatternValidation.valid) {
+    return { success: false, error: excludePatternValidation.error };
+  }
+  const excludeMatcher = createGitHubUploadExcludeMatcher(excludePatternValidation.value);
 
   if (selectionValidation.value.length === 0) {
     return { success: false, error: 'Select at least one file or folder to upload' };
@@ -3815,7 +4283,7 @@ async function handleGitHubUploadProjectRequest(sender, projectPath, repoData, c
   const selectedUploadPaths = [];
   let excludedSelectionCount = 0;
   for (const selectedPath of selectionValidation.value) {
-    if (isGitHubUploadPathExcluded(selectedPath)) {
+    if (isGitHubUploadPathExcluded(selectedPath) || excludeMatcher(selectedPath)) {
       excludedSelectionCount += 1;
       continue;
     }
@@ -3834,9 +4302,10 @@ async function handleGitHubUploadProjectRequest(sender, projectPath, repoData, c
   }
 
   if (selectedUploadPaths.length === 0) {
-    const suffix = excludedSelectionCount > 0
-      ? ' Generated folders are excluded automatically (for example: node_modules, dist, build).'
-      : '';
+    let suffix = '';
+    if (excludedSelectionCount > 0) {
+      suffix = ' Generated folders and files matching your exclude patterns are skipped automatically.';
+    }
     return {
       success: false,
       error: `Select at least one uploadable file or folder.${suffix}`
@@ -3961,7 +4430,10 @@ async function handleGitHubUploadProjectRequest(sender, projectPath, repoData, c
             'active',
             `${detailLabel}... ${index + 1}/${selectedUploadPaths.length}`
           );
-          copiedFileCount += await copyGitHubUploadPathRecursive(sourcePath, destinationPath);
+          copiedFileCount += await copyGitHubUploadPathRecursive(sourcePath, destinationPath, {
+            relativePath: selectedPath,
+            excludeMatcher
+          });
         }
         return { success: true, copiedFileCount };
       };
@@ -4090,9 +4562,12 @@ async function handleGitHubUploadProjectRequest(sender, projectPath, repoData, c
         ? stagedDiffResult.output.trim().split('\n').filter((line) => line).length
         : 0;
       if (fileCountResult === 0) {
+        const excludeSuffix = excludePatternValidation.value.length > 0
+          ? ' after applying exclude patterns'
+          : '';
         const message = uploadMode === 'existing'
-          ? 'No changes detected against the existing repository'
-          : 'No files were staged for upload';
+          ? `No changes detected against the existing repository${excludeSuffix}`
+          : `No files were staged for upload${excludeSuffix}`;
         sendProgress('stage-files', 'error', message);
         return { success: false, error: message };
       }
@@ -4191,16 +4666,28 @@ ipcMain.handle('github-disconnect', async () => {
 
 // Terminal operations
 ipcMain.handle('open-terminal', async (event, projectPath) => {
-  const fallbackPath = appSettings.defaultProjectPath || projectsBasePath;
-  const pathValidation = validateGitPath(projectPath || fallbackPath);
-  if (!pathValidation.valid) {
-    return { success: false, error: pathValidation.error };
+  const requestedPath = typeof projectPath === 'string' ? projectPath.trim() : '';
+  const fallbackPath = typeof appSettings.defaultProjectPath === 'string' && appSettings.defaultProjectPath.trim()
+    ? appSettings.defaultProjectPath.trim()
+    : projectsBasePath;
+  const rawCandidates = appSettings.terminalCwd === false
+    ? [fallbackPath, requestedPath, app.getPath('home'), os.homedir()]
+    : [requestedPath, fallbackPath, app.getPath('home'), os.homedir()];
+  const candidates = [...new Set(rawCandidates.filter((candidate) => typeof candidate === 'string' && candidate.trim()))];
+
+  let workingDirectory = '';
+  for (const candidate of candidates) {
+    const validation = await validateCommandWorkingDirectory(candidate);
+    if (validation.valid) {
+      workingDirectory = validation.path;
+      break;
+    }
   }
 
-  const fallbackValidation = validateGitPath(fallbackPath);
-  const workingDirectory = appSettings.terminalCwd === false && fallbackValidation.valid
-    ? fallbackValidation.path
-    : pathValidation.path;
+  if (!workingDirectory) {
+    return { success: false, error: 'No valid terminal working directory could be resolved.' };
+  }
+
   const terminalChoice = typeof appSettings.terminalApp === 'string' && ALLOWED_TERMINAL_APPS.has(appSettings.terminalApp)
     ? appSettings.terminalApp
     : 'cmd';
@@ -4210,6 +4697,15 @@ ipcMain.handle('open-terminal', async (event, projectPath) => {
   const terminalExecutable = configuredTerminalPath && configuredTerminalPath.length <= MAX_SETTINGS_PATH_LENGTH
     ? configuredTerminalPath
     : null;
+  const terminalExtraArgsRaw = typeof appSettings.terminalShellArgs === 'string'
+    ? appSettings.terminalShellArgs.trim()
+    : '';
+  const terminalExtraArgs = terminalExtraArgsRaw
+    ? (terminalExtraArgsRaw.match(/"[^"]*"|'[^']*'|[^\s]+/g) || [])
+      .map((part) => part.replace(/^["']|["']$/g, ''))
+      .filter((part) => part && part.length <= 128)
+      .slice(0, 24)
+    : [];
   const runAsAdmin = Boolean(appSettings.terminalAdmin) && process.platform === 'win32';
 
   const launchDetached = (command, args, options = {}) => new Promise((resolve, reject) => {
@@ -4228,7 +4724,7 @@ ipcMain.handle('open-terminal', async (event, projectPath) => {
   try {
     if (process.platform === 'win32') {
       let command = terminalExecutable || 'cmd';
-      let args = [];
+      let args = terminalExecutable ? [...terminalExtraArgs] : [];
 
       if (!terminalExecutable) {
         if (terminalChoice === 'powershell') {
@@ -4269,7 +4765,7 @@ ipcMain.handle('open-terminal', async (event, projectPath) => {
 
     if (process.platform === 'darwin') {
       if (terminalExecutable) {
-        await launchDetached(terminalExecutable, []);
+        await launchDetached(terminalExecutable, terminalExtraArgs);
       } else {
         await launchDetached('open', ['-a', 'Terminal', workingDirectory], { cwd: undefined });
       }
@@ -4277,7 +4773,7 @@ ipcMain.handle('open-terminal', async (event, projectPath) => {
     }
 
     if (terminalExecutable) {
-      await launchDetached(terminalExecutable, []);
+      await launchDetached(terminalExecutable, terminalExtraArgs);
     } else {
       await launchDetached('gnome-terminal', [`--working-directory=${workingDirectory}`]);
     }
@@ -4292,6 +4788,44 @@ ipcMain.handle('open-terminal', async (event, projectPath) => {
       error: error.message
     });
     return { success: false, error: error.message || 'Failed to open terminal' };
+  }
+});
+
+ipcMain.handle('get-project-artwork-candidates', async (event, projectPath) => {
+  const pathValidation = validateGitPath(projectPath);
+  if (!pathValidation.valid) {
+    return {
+      success: false,
+      error: pathValidation.error,
+      candidates: [],
+      scannedAssetsFolders: 0
+    };
+  }
+
+  try {
+    const scanResult = await collectProjectArtworkCandidates(pathValidation.path);
+    return {
+      success: true,
+      candidates: Array.isArray(scanResult?.candidates) ? scanResult.candidates : [],
+      scannedAssetsFolders: Number.isFinite(scanResult?.scannedAssetsFolders)
+        ? Math.max(0, Math.floor(scanResult.scannedAssetsFolders))
+        : 0,
+      scannedArtworkDirectories: Number.isFinite(scanResult?.scannedArtworkDirectories)
+        ? Math.max(0, Math.floor(scanResult.scannedArtworkDirectories))
+        : 0
+    };
+  } catch (error) {
+    logger.warn('Failed to scan project artwork candidates', {
+      projectPath: pathValidation.path,
+      error: error.message
+    });
+    return {
+      success: false,
+      error: error.message || 'Failed to scan project artwork',
+      candidates: [],
+      scannedAssetsFolders: 0,
+      scannedArtworkDirectories: 0
+    };
   }
 });
 
@@ -4743,15 +5277,17 @@ async function performCloneRepository(
 
 async function performExportProject(projectPath, outputPath) {
   return new Promise((resolve) => {
-    exec(`powershell Compress-Archive -Path "${projectPath}\\*" -DestinationPath "${outputPath}" -Force`,
-      (error) => {
-        if (error) {
-          resolve({ success: false, error: error.message });
-        } else {
-          resolve({ success: true, path: outputPath });
-        }
+    execFile('powershell', [
+      '-NoProfile', '-NonInteractive', '-Command',
+      `Compress-Archive -Path (Join-Path -Path $args[0] -ChildPath '*') -DestinationPath $args[1] -Force`,
+      '--', projectPath, outputPath
+    ], { timeout: 120000, windowsHide: true }, (error, _stdout, stderr) => {
+      if (error) {
+        resolve({ success: false, error: stderr || error.message });
+      } else {
+        resolve({ success: true, path: outputPath });
       }
-    );
+    });
   });
 }
 
@@ -4992,409 +5528,47 @@ ipcMain.handle('rename-project', async (event, projectPath, newNameInput) => {
   }
 });
 
-// Show about dialog
-ipcMain.handle('show-about', async () => {
-  await loadAppVersionInfo();
-  const versionInfo = getAppVersionInfo();
-  dialog.showMessageBox(mainWindow, {
-    type: 'info',
-    title: 'About Project Manager Pro',
-    message: 'Project Manager Pro',
-    detail: `Version ${versionInfo.version}\n\nA professional project management application with VSCode-like interface.\n\n(c) ${new Date().getFullYear()} Project Manager Pro`,
-    buttons: ['OK']
-  });
-});
-
-// Get app version info
-ipcMain.handle('get-app-version-info', async () => {
-  await loadAppVersionInfo();
-  return getAppVersionInfo();
-});
-
-ipcMain.handle('get-update-state', async () => {
-  return updateManager.getState();
-});
-
-ipcMain.handle('check-for-updates', async () => {
-  return updateManager.checkForUpdates();
-});
-
-ipcMain.handle('set-update-channel', async (event, channel) => {
-  const result = updateManager.setChannel(channel);
-  if (result.success) {
-    appSettings = sanitizeAppSettings({ ...appSettings, updateChannel: result.state.channel }, projectsBasePath);
-    await saveSettings();
-  }
-  return result;
-});
-
-ipcMain.handle('download-update', async () => {
-  return updateManager.downloadUpdate();
-});
-
-ipcMain.handle('install-update', async () => {
-  return updateManager.installUpdate();
-});
-
-ipcMain.handle('rollback-update', async () => {
-  const result = await updateManager.rollbackToStable();
-  if (result.success) {
-    appSettings = sanitizeAppSettings({ ...appSettings, updateChannel: 'stable' }, projectsBasePath);
-    await saveSettings();
-  }
-  return result;
-});
-
-ipcMain.handle('create-workspace-snapshot', async (event, name = '') => {
-  try {
-    const recentProjects = await readRecentProjectsFromDisk();
-    const snapshot = await workspaceServices.createSnapshot({
-      name,
-      workspacePath: projectsBasePath,
-      settings: getRendererSafeSettings(appSettings),
-      recentProjects
-    });
-    return { success: true, snapshot };
-  } catch (error) {
-    return { success: false, error: error.message || 'Failed to create snapshot' };
-  }
-});
-
-ipcMain.handle('get-workspace-snapshots', async () => {
-  try {
-    const snapshots = await workspaceServices.listSnapshots();
-    return { success: true, snapshots };
-  } catch (error) {
-    return { success: false, error: error.message || 'Failed to load snapshots', snapshots: [] };
-  }
-});
-
-ipcMain.handle('restore-workspace-snapshot', async (event, snapshotId) => {
-  try {
-    const snapshot = await workspaceServices.loadSnapshot(snapshotId);
-    appSettings = sanitizeAppSettings(snapshot.settings || {}, projectsBasePath);
-    projectsBasePath = appSettings.defaultProjectPath;
-    await saveSettings();
-    await ensureProjectsDir();
-    await saveRecentProjectsToDisk(snapshot.recentProjects || []);
-    return {
-      success: true,
-      restored: {
-        id: snapshot.id,
-        name: snapshot.name,
-        workspacePath: snapshot.workspacePath,
-        createdAt: snapshot.createdAt
-      }
-    };
-  } catch (error) {
-    return { success: false, error: error.message || 'Failed to restore snapshot' };
-  }
-});
-
-ipcMain.handle('save-project-task-profile', async (event, projectPath, profiles) => {
-  try {
-    const pathValidation = validateGitPath(projectPath);
-    if (!pathValidation.valid) {
-      return { success: false, error: pathValidation.error };
-    }
-    const savedProfiles = await workspaceServices.saveTaskProfiles(pathValidation.path, profiles);
-    return { success: true, profiles: savedProfiles };
-  } catch (error) {
-    return { success: false, error: error.message || 'Failed to save task profiles' };
-  }
-});
-
-ipcMain.handle('get-project-task-profiles', async (event, projectPath) => {
-  try {
-    const pathValidation = validateGitPath(projectPath);
-    if (!pathValidation.valid) {
-      return { success: false, error: pathValidation.error, profiles: [] };
-    }
-    const profiles = await workspaceServices.getTaskProfiles(pathValidation.path);
-    return { success: true, profiles };
-  } catch (error) {
-    return { success: false, error: error.message || 'Failed to load task profiles', profiles: [] };
-  }
-});
-
-ipcMain.handle('run-project-task-profile', async (event, projectPath, profileId) => {
-  try {
-    const pathValidation = validateGitPath(projectPath);
-    if (!pathValidation.valid) {
-      return { success: false, error: pathValidation.error };
-    }
-
-    const profiles = await workspaceServices.getTaskProfiles(pathValidation.path);
-    const profile = profiles.find((item) => item && item.id === profileId);
-    if (!profile) {
-      return { success: false, error: 'Task profile not found' };
-    }
-
-    const parsedCommand = parseAllowedRunCommand(profile.command || '');
-    if (!parsedCommand) {
-      return { success: false, error: 'This task command is blocked by security policy.' };
-    }
-
-    const cwdCandidate = typeof profile.cwd === 'string' && profile.cwd.trim()
-      ? path.resolve(pathValidation.path, profile.cwd.trim())
-      : pathValidation.path;
-    const cwdValidation = await validateCommandWorkingDirectory(cwdCandidate);
-    if (!cwdValidation.valid) {
-      return { success: false, error: cwdValidation.error };
-    }
-
-    const result = await executeCommandWithArgs(parsedCommand.executable, parsedCommand.args, {
-      cwd: cwdValidation.path,
-      timeout: 120000,
-      maxBuffer: COMMAND_MAX_BUFFER_BYTES
-    });
-
-    if (!result.success) {
-      return { success: false, error: result.error || 'Task failed', stderr: result.stderr || '' };
-    }
-
-    return { success: true, stdout: result.output || '', stderr: result.stderr || '' };
-  } catch (error) {
-    return { success: false, error: error.message || 'Failed to run task profile' };
-  }
-});
-
-ipcMain.handle('build-search-index', async (event, workspacePathInput) => {
-  try {
-    const workspacePathValue = typeof workspacePathInput === 'string' && workspacePathInput.trim()
-      ? workspacePathInput.trim()
-      : projectsBasePath;
-    const result = await workspaceServices.buildSearchIndex({ workspacePath: workspacePathValue });
-    return result;
-  } catch (error) {
-    return { success: false, error: error.message || 'Failed to build search index' };
-  }
-});
-
-ipcMain.handle('query-search-index', async (event, query, limit = 60) => {
-  try {
-    return workspaceServices.querySearchIndex(query, limit);
-  } catch (error) {
-    return { success: false, error: error.message || 'Failed to query search index', results: [] };
-  }
-});
-
-ipcMain.handle('enqueue-operation', async (event, type, payload) => {
-  try {
-    const operationType = typeof type === 'string' ? type.trim() : '';
-    if (!operationType) {
-      return { success: false, error: 'Operation type is required' };
-    }
-
-    if (PRO_QUEUE_OPERATION_TYPES.has(operationType) && !licenseManager.isProUnlocked()) {
-      return {
-        success: false,
-        error: 'This feature requires Pro. Register your product key in Help > Register Product.'
-      };
-    }
-
-    const job = operationQueue.enqueue(operationType, payload);
-    return { success: true, job };
-  } catch (error) {
-    return { success: false, error: error.message || 'Failed to enqueue operation' };
-  }
-});
-
-ipcMain.handle('get-operation-queue', async () => {
-  return { success: true, jobs: operationQueue.getSnapshot() };
-});
-
-ipcMain.handle('cancel-operation', async (event, jobId) => {
-  return operationQueue.cancel(jobId);
-});
-
-ipcMain.handle('retry-operation', async (event, jobId) => {
-  return operationQueue.retry(jobId);
-});
-
-ipcMain.handle('get-log-history', async (_event, options = {}) => {
-  try {
-    const snapshot = logger.getHistorySnapshot(options && typeof options === 'object' ? options : {});
-    return {
-      success: true,
-      ...snapshot,
-      currentLogFile: logger.getCurrentLogFile(),
-      logDirectory: logger.getLogDirectory(),
-      generatedAt: new Date().toISOString()
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message || 'Failed to load diagnostic logs',
-      entries: [],
-      totalEntries: 0,
-      filteredEntries: 0,
-      stats: null
-    };
-  }
-});
-
-ipcMain.handle('clear-log-history', async () => {
-  logger.clearHistory();
-  await logger.info('Diagnostic log history cleared', { source: 'diagnostics' });
-  return { success: true };
-});
-
-ipcMain.handle('open-log-folder', async () => {
-  try {
-    await logger.initializeLogger();
-    const logDirectory = logger.getLogDirectory() || path.join(app.getPath('userData'), 'logs');
-    await fs.mkdir(logDirectory, { recursive: true });
-    const openError = await shell.openPath(logDirectory);
-    if (openError) {
-      return {
-        success: false,
-        error: openError,
-        path: logDirectory
-      };
-    }
-
-    return {
-      success: true,
-      path: logDirectory
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message || 'Failed to open log folder',
-      path: ''
-    };
-  }
-});
-
-ipcMain.handle('report-renderer-fault', async (_event, payload = {}) => {
-  try {
-    const normalized = sanitizeRendererFaultPayload(payload);
-    const level = normalized.severity === 'warn' ? 'warn' : 'error';
-
-    if (level === 'warn') {
-      await logger.warn('Renderer fault reported', {
-        source: 'renderer',
-        ...normalized
-      });
-    } else {
-      await logger.error('Renderer fault reported', {
-        source: 'renderer',
-        ...normalized
-      });
-    }
-
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message || 'Failed to record renderer fault'
-    };
-  }
-});
-
-ipcMain.handle('get-user-data-path', async () => {
-  return app.getPath('userData');
-});
-
-ipcMain.handle('open-user-data-folder', async () => {
-  const userDataPath = app.getPath('userData');
-  const openError = await shell.openPath(userDataPath);
-
-  if (openError) {
-    return { success: false, error: openError, path: userDataPath };
-  }
-
-  return { success: true, path: userDataPath };
-});
-
-ipcMain.handle('get-license-status', async () => {
-  return licenseManager.getLicenseStatus();
-});
-
-ipcMain.handle('register-product-key', async (event, productKey) => {
-  return licenseManager.registerProductKey(productKey);
-});
-
-// Open external link
-ipcMain.handle('open-external', async (event, url) => {
-  return openExternalSafely(url);
-});
-
-// Copy to clipboard
-ipcMain.handle('copy-to-clipboard', (event, text) => {
-  clipboard.writeText(text);
-});
-
-// Get clipboard content
-ipcMain.handle('get-clipboard', () => {
-  return clipboard.readText();
-});
-
-// Run controlled npm/pip/git commands
-ipcMain.handle('run-command', async (event, command, projectPath) => {
-  const normalizedCommand = typeof command === 'string' ? command.trim() : '';
-  const pathValidation = await validateCommandWorkingDirectory(projectPath);
-
-  if (!pathValidation.valid) {
-    logger.warn('Blocked command due to invalid project path', { command: normalizedCommand, projectPath });
-    return { success: false, error: pathValidation.error };
-  }
-
-  const parsedCommand = parseAllowedRunCommand(normalizedCommand);
-  if (!parsedCommand) {
-    logger.warn('Blocked non-allowlisted command', { command: normalizedCommand, cwd: pathValidation.path });
-    return { success: false, error: 'This command is not allowed for security reasons.' };
-  }
-
-  logger.info(`Running command: ${parsedCommand.normalizedCommand}`, {
-    cwd: pathValidation.path,
-    executable: parsedCommand.executable,
-    args: parsedCommand.args
-  });
-
-  const result = await executeCommandWithArgs(parsedCommand.executable, parsedCommand.args, {
-    cwd: pathValidation.path,
-    timeout: 120000,
-    maxBuffer: COMMAND_MAX_BUFFER_BYTES
-  });
-
-  if (!result.success) {
-    logger.error(`Command failed: ${parsedCommand.normalizedCommand}`, { error: result.error, stderr: result.stderr });
-    const userError = result.error === 'Command timed out' ? 'Command timed out after 2 minutes' : result.error;
-    return { success: false, error: userError, stderr: result.stderr };
-  }
-
-  logger.info(`Command succeeded: ${parsedCommand.normalizedCommand}`);
-  return { success: true, stdout: result.output || '', stderr: result.stderr || '' };
-});
-
-// Check for VSCode installation
-ipcMain.handle('check-vscode', async () => {
-  const launcher = await vscodeLauncherService.resolveLauncher();
-  return Boolean(launcher);
-});
-
-// Get system info
-ipcMain.handle('get-system-info', () => {
-  const versionInfo = getAppVersionInfo();
-  return {
-    platform: process.platform,
-    arch: process.arch,
-    nodeVersion: process.version,
-    electronVersion: process.versions.electron,
-    chromeVersion: process.versions.chrome,
-    v8Version: process.versions.v8,
-    osRelease: os.release(),
-    totalMemory: os.totalmem(),
-    freeMemory: os.freemem(),
-    cpus: os.cpus().length,
-    homedir: os.homedir(),
-    appVersion: versionInfo.version,
-    appDisplayVersion: versionInfo.displayVersion,
-    appReleaseChannel: versionInfo.channel,
-    proUnlocked: licenseManager.isProUnlocked()
-  };
+registerUpdateWorkspaceSystemIpcHandlers({
+  ipcMain,
+  getMainWindow: () => mainWindow,
+  dialog,
+  loadAppVersionInfo,
+  getAppVersionInfo,
+  updateManager,
+  getAppSettings: () => appSettings,
+  setAppSettings: (nextSettings) => {
+    appSettings = nextSettings;
+  },
+  getProjectsBasePath: () => projectsBasePath,
+  setProjectsBasePath: (nextPath) => {
+    projectsBasePath = nextPath;
+  },
+  sanitizeAppSettings,
+  saveSettings,
+  ensureProjectsDir,
+  readRecentProjectsFromDisk,
+  saveRecentProjectsToDisk,
+  getRendererSafeSettings,
+  workspaceServices,
+  validateGitPath,
+  parseAllowedRunCommand,
+  validateCommandWorkingDirectory,
+  executeCommandWithArgs,
+  commandMaxBufferBytes: COMMAND_MAX_BUFFER_BYTES,
+  proQueueOperationTypes: PRO_QUEUE_OPERATION_TYPES,
+  operationQueue,
+  licenseManager,
+  logger,
+  app,
+  shell,
+  fsPromises: fs,
+  pathModule: path,
+  sanitizeRendererFaultPayload,
+  openExternalSafely,
+  clipboard,
+  vscodeLauncherService,
+  osModule: os,
+  processRef: process
 });
 
 ipcMain.handle('create-project', async (event, projectData) => {
@@ -5791,829 +5965,7 @@ ipcMain.handle('get-templates', async () => {
   }));
 });
 
-// Project creation functions
-async function createElectronProject(projectPath, name, description) {
-  const packageJson = {
-    name: name.toLowerCase().replace(/\s+/g, '-'),
-    version: "0.1.0",
-    description: description,
-    main: "main.js",
-    scripts: {
-      start: "electron .",
-      build: "electron-builder"
-    },
-    devDependencies: {
-      electron: "^39.2.3"
-    }
-  };
-  
-  const mainJs = `const { app, BrowserWindow } = require('electron');
-const path = require('path');
-
-function createWindow() {
-  const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: true,
-      webSecurity: true
-    }
-  });
-
-  mainWindow.loadFile('index.html');
-}
-
-app.whenReady().then(createWindow);
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});`;
-
-  const preloadJs = `const { contextBridge } = require('electron');
-
-contextBridge.exposeInMainWorld('appInfo', {
-  electron: process.versions.electron
-});`;
-
-  const indexHtml = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>${name}</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-    }
-    h1 { margin-bottom: 10px; }
-    p { opacity: 0.9; }
-  </style>
-</head>
-	<body>
-	  <h1>Welcome to ${name}</h1>
-	  <p>${description}</p>
-	  <p>Electron: <span id="electron-version"></span></p>
-	  <script>
-	    const version = window.appInfo && window.appInfo.electron ? window.appInfo.electron : 'unknown';
-	    document.getElementById('electron-version').textContent = version;
-	  </script>
-	</body>
-	</html>`;
-	  
-  await fs.writeFile(path.join(projectPath, 'package.json'), JSON.stringify(packageJson, null, 2));
-  await fs.writeFile(path.join(projectPath, 'main.js'), mainJs);
-  await fs.writeFile(path.join(projectPath, 'preload.js'), preloadJs);
-  await fs.writeFile(path.join(projectPath, 'index.html'), indexHtml);
-  await fs.writeFile(path.join(projectPath, '.gitignore'), 'node_modules/\ndist/\n*.log');
-  await fs.writeFile(path.join(projectPath, 'README.md'), `# ${name}\n\n${description}\n\n## Getting Started\n\n\`\`\`bash\nnpm install\nnpm start\n\`\`\``);
-}
-
-async function createPythonProject(projectPath, name, description) {
-  const mainPy = `#!/usr/bin/env python3
-"""
-${name}
-${description}
-"""
-
-def main():
-    """Main function"""
-    print(f"Welcome to ${name}")
-    print(f"${description}")
-    
-if __name__ == "__main__":
-    main()
-`;
-
-  const requirements = `# Core dependencies
-numpy>=1.21.0
-pandas>=1.3.0
-requests>=2.26.0
-`;
-
-  const gitignore = `# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-ENV/
-build/
-dist/
-*.egg-info/
-.venv
-pip-log.txt
-pip-delete-this-directory.txt
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Project specific
-*.log
-.DS_Store
-`;
-
-  const readme = `# ${name}
-
-${description}
-
-## Setup
-
-\`\`\`bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\\Scripts\\activate
-pip install -r requirements.txt
-\`\`\`
-
-## Usage
-
-\`\`\`bash
-python main.py
-\`\`\`
-`;
-
-  await fs.writeFile(path.join(projectPath, 'main.py'), mainPy);
-  await fs.writeFile(path.join(projectPath, 'requirements.txt'), requirements);
-  await fs.writeFile(path.join(projectPath, '.gitignore'), gitignore);
-  await fs.writeFile(path.join(projectPath, 'README.md'), readme);
-  
-  // Create project structure
-  await fs.mkdir(path.join(projectPath, 'src'), { recursive: true });
-  await fs.mkdir(path.join(projectPath, 'tests'), { recursive: true });
-  await fs.mkdir(path.join(projectPath, 'docs'), { recursive: true });
-  
-  await fs.writeFile(path.join(projectPath, 'src', '__init__.py'), '');
-  await fs.writeFile(path.join(projectPath, 'tests', '__init__.py'), '');
-}
-
-async function createWebProject(projectPath, name, description) {
-  const indexHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${name}</title>
-    <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-    <div class="container">
-        <header>
-            <h1>${name}</h1>
-            <nav>
-                <ul>
-                    <li><a href="#home">Home</a></li>
-                    <li><a href="#about">About</a></li>
-                    <li><a href="#services">Services</a></li>
-                    <li><a href="#contact">Contact</a></li>
-                </ul>
-            </nav>
-        </header>
-        
-        <main>
-            <section id="hero">
-                <h2>Welcome to ${name}</h2>
-                <p>${description}</p>
-                <button class="cta-button">Get Started</button>
-            </section>
-        </main>
-        
-        <footer>
-            <p>&copy; 2026 ${name}. All rights reserved.</p>
-        </footer>
-    </div>
-    
-    <script src="js/script.js"></script>
-</body>
-</html>`;
-
-  const styleCss = `* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    line-height: 1.6;
-    color: #333;
-}
-
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
-}
-
-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 1rem 0;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-header h1 {
-    display: inline-block;
-    margin-right: 2rem;
-}
-
-nav {
-    display: inline-block;
-}
-
-nav ul {
-    list-style: none;
-    display: flex;
-    gap: 2rem;
-}
-
-nav a {
-    color: white;
-    text-decoration: none;
-    transition: opacity 0.3s;
-}
-
-nav a:hover {
-    opacity: 0.8;
-}
-
-#hero {
-    padding: 4rem 0;
-    text-align: center;
-    background: #f8f9fa;
-    margin: 2rem 0;
-    border-radius: 10px;
-}
-
-#hero h2 {
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
-}
-
-#hero p {
-    font-size: 1.2rem;
-    margin-bottom: 2rem;
-    color: #666;
-}
-
-.cta-button {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    padding: 1rem 2rem;
-    font-size: 1.1rem;
-    border-radius: 50px;
-    cursor: pointer;
-    transition: transform 0.3s;
-}
-
-.cta-button:hover {
-    transform: translateY(-2px);
-}
-
-footer {
-    background: #333;
-    color: white;
-    text-align: center;
-    padding: 2rem 0;
-    margin-top: 4rem;
-}`;
-
-  const scriptJs = `// ${name} JavaScript
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('${name} loaded successfully');
-    
-    // Smooth scrolling for navigation links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            }
-        });
-    });
-    
-    // CTA button click handler
-    const ctaButton = document.querySelector('.cta-button');
-    if (ctaButton) {
-        ctaButton.addEventListener('click', function() {
-            alert('Welcome to ${name}!');
-        });
-    }
-});`;
-
-  await fs.mkdir(path.join(projectPath, 'css'), { recursive: true });
-  await fs.mkdir(path.join(projectPath, 'js'), { recursive: true });
-  await fs.mkdir(path.join(projectPath, 'images'), { recursive: true });
-  
-  await fs.writeFile(path.join(projectPath, 'index.html'), indexHtml);
-  await fs.writeFile(path.join(projectPath, 'css', 'style.css'), styleCss);
-  await fs.writeFile(path.join(projectPath, 'js', 'script.js'), scriptJs);
-  await fs.writeFile(path.join(projectPath, 'README.md'), `# ${name}\n\n${description}\n\n## Features\n\n- Responsive design\n- Modern CSS with gradients\n- Smooth scrolling\n- Clean structure`);
-}
-
-async function createNodeProject(projectPath, name, description) {
-  const packageJson = {
-    name: name.toLowerCase().replace(/\s+/g, '-'),
-    version: "1.0.0",
-    description: description,
-    main: "index.js",
-    scripts: {
-      start: "node index.js",
-      dev: "nodemon index.js",
-      test: "jest"
-    },
-    keywords: [],
-    author: "",
-    license: "ISC",
-    dependencies: {
-      express: "^4.18.0",
-      dotenv: "^16.0.0"
-    },
-    devDependencies: {
-      nodemon: "^2.0.0",
-      jest: "^29.0.0"
-    }
-  };
-  
-  const indexJs = `const express = require('express');
-const path = require('path');
-require('dotenv').config();
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static('public'));
-
-// Routes
-app.get('/', (req, res) => {
-    res.json({
-        name: '${name}',
-        description: '${description}',
-        version: '1.0.0'
-    });
-});
-
-app.get('/api/status', (req, res) => {
-    res.json({
-        status: 'OK',
-        timestamp: new Date().toISOString()
-    });
-});
-
-// Error handling
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ error: 'Something went wrong!' });
-});
-
-// Start server
-app.listen(PORT, () => {
-    console.log(\`Server is running on http://localhost:\${PORT}\`);
-});
-
-module.exports = app;`;
-
-  const envExample = `# Environment Variables
-PORT=3000
-NODE_ENV=development
-`;
-
-  const gitignore = `node_modules/
-.env
-.DS_Store
-*.log
-dist/
-coverage/
-`;
-
-  await fs.writeFile(path.join(projectPath, 'package.json'), JSON.stringify(packageJson, null, 2));
-  await fs.writeFile(path.join(projectPath, 'index.js'), indexJs);
-  await fs.writeFile(path.join(projectPath, '.env.example'), envExample);
-  await fs.writeFile(path.join(projectPath, '.gitignore'), gitignore);
-  await fs.writeFile(path.join(projectPath, 'README.md'), `# ${name}\n\n${description}\n\n## Installation\n\n\`\`\`bash\nnpm install\n\`\`\`\n\n## Usage\n\n\`\`\`bash\nnpm start\n\`\`\``);
-  
-  await fs.mkdir(path.join(projectPath, 'public'), { recursive: true });
-  await fs.mkdir(path.join(projectPath, 'routes'), { recursive: true });
-  await fs.mkdir(path.join(projectPath, 'models'), { recursive: true });
-  await fs.mkdir(path.join(projectPath, 'controllers'), { recursive: true });
-}
-
-async function createReactProject(projectPath, name, description) {
-  const packageJson = {
-    name: name.toLowerCase().replace(/\s+/g, '-'),
-    version: "0.1.0",
-    private: true,
-    description: description,
-    dependencies: {
-      "react": "^18.2.0",
-      "react-dom": "^18.2.0",
-      "react-scripts": "5.0.1"
-    },
-    scripts: {
-      "start": "react-scripts start",
-      "build": "react-scripts build",
-      "test": "react-scripts test",
-      "eject": "react-scripts eject"
-    },
-    "eslintConfig": {
-      "extends": ["react-app"]
-    },
-    "browserslist": {
-      "production": [">0.2%", "not dead", "not op_mini all"],
-      "development": ["last 1 chrome version", "last 1 firefox version", "last 1 safari version"]
-    }
-  };
-  
-  await fs.writeFile(path.join(projectPath, 'package.json'), JSON.stringify(packageJson, null, 2));
-  await fs.writeFile(path.join(projectPath, '.gitignore'), 'node_modules/\n.DS_Store\nbuild/\n.env.local\n');
-  await fs.writeFile(path.join(projectPath, 'README.md'), `# ${name}\n\n${description}\n\n## Available Scripts\n\n### \`npm start\`\n\nRuns the app in development mode.\n\n### \`npm run build\`\n\nBuilds the app for production.`);
-  
-  // Create src directory and basic files
-  const srcPath = path.join(projectPath, 'src');
-  await fs.mkdir(srcPath, { recursive: true });
-  
-  const appJs = `import React from 'react';
-import './App.css';
-
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <h1>${name}</h1>
-        <p>${description}</p>
-        <button className="App-button">Get Started</button>
-      </header>
-    </div>
-  );
-}
-
-export default App;`;
-  
-  const indexJs = `import React from 'react';
-import ReactDOM from 'react-dom/client';
-import './index.css';
-import App from './App';
-
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);`;
-  
-  const appCss = `.App {
-  text-align: center;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.App-header {
-  color: white;
-}
-
-.App-header h1 {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-}
-
-.App-button {
-  background: white;
-  color: #667eea;
-  border: none;
-  padding: 1rem 2rem;
-  font-size: 1.1rem;
-  border-radius: 50px;
-  cursor: pointer;
-  transition: transform 0.3s;
-  margin-top: 2rem;
-}
-
-.App-button:hover {
-  transform: translateY(-2px);
-}`;
-  
-  const indexCss = `body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
-}`;
-  
-  await fs.writeFile(path.join(srcPath, 'App.js'), appJs);
-  await fs.writeFile(path.join(srcPath, 'index.js'), indexJs);
-  await fs.writeFile(path.join(srcPath, 'App.css'), appCss);
-  await fs.writeFile(path.join(srcPath, 'index.css'), indexCss);
-  
-  // Create public directory
-  const publicPath = path.join(projectPath, 'public');
-  await fs.mkdir(publicPath, { recursive: true });
-  
-  const indexHtml = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta name="description" content="${description}" />
-    <title>${name}</title>
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
-  </body>
-</html>`;
-  
-  await fs.writeFile(path.join(publicPath, 'index.html'), indexHtml);
-}
-
-async function createVueProject(projectPath, name, description) {
-  const packageJson = {
-    name: name.toLowerCase().replace(/\s+/g, '-'),
-    version: "0.1.0",
-    private: true,
-    description: description,
-    scripts: {
-      serve: "vue-cli-service serve",
-      build: "vue-cli-service build"
-    },
-    dependencies: {
-      "vue": "^3.2.0",
-      "vue-router": "^4.0.0",
-      "vuex": "^4.0.0"
-    },
-    devDependencies: {
-      "@vue/cli-service": "^5.0.0"
-    }
-  };
-  
-  await fs.writeFile(path.join(projectPath, 'package.json'), JSON.stringify(packageJson, null, 2));
-  await fs.writeFile(path.join(projectPath, '.gitignore'), 'node_modules/\n.DS_Store\ndist/\n*.log');
-  await fs.writeFile(path.join(projectPath, 'README.md'), `# ${name}\n\n${description}\n\n## Project setup\n\`\`\`\nnpm install\n\`\`\`\n\n### Compiles and hot-reloads for development\n\`\`\`\nnpm run serve\n\`\`\``);
-  
-  // Create src directory
-  const srcPath = path.join(projectPath, 'src');
-  await fs.mkdir(srcPath, { recursive: true });
-  
-  const mainJs = `import { createApp } from 'vue'
-import App from './App.vue'
-
-createApp(App).mount('#app')`;
-  
-  const appVue = `<template>
-  <div id="app">
-    <header>
-      <h1>{{ title }}</h1>
-      <p>{{ description }}</p>
-      <button @click="handleClick">Get Started</button>
-    </header>
-  </div>
-</template>
-
-<script>
-export default {
-  name: 'App',
-  data() {
-    return {
-      title: '${name}',
-      description: '${description}'
-    }
-  },
-  methods: {
-    handleClick() {
-      alert('Welcome to ${name}!');
-    }
-  }
-}
-</script>
-
-<style>
-#app {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  text-align: center;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-header h1 {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-}
-
-button {
-  background: white;
-  color: #667eea;
-  border: none;
-  padding: 1rem 2rem;
-  font-size: 1.1rem;
-  border-radius: 50px;
-  cursor: pointer;
-  transition: transform 0.3s;
-  margin-top: 2rem;
-}
-
-button:hover {
-  transform: translateY(-2px);
-}
-</style>`;
-  
-  await fs.writeFile(path.join(srcPath, 'main.js'), mainJs);
-  await fs.writeFile(path.join(srcPath, 'App.vue'), appVue);
-  
-  // Create public directory
-  const publicPath = path.join(projectPath, 'public');
-  await fs.mkdir(publicPath, { recursive: true });
-  
-  const indexHtml = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <title>${name}</title>
-  </head>
-  <body>
-    <div id="app"></div>
-  </body>
-</html>`;
-  
-  await fs.writeFile(path.join(publicPath, 'index.html'), indexHtml);
-}
-
-async function createCppProject(projectPath, name, description) {
-  const mainCpp = `#include <iostream>
-#include <string>
-
-// ${name}
-// ${description}
-
-int main() {
-    std::cout << "Welcome to ${name}" << std::endl;
-    std::cout << "${description}" << std::endl;
-    
-    std::cout << "\\nPress Enter to continue...";
-    std::cin.get();
-    
-    return 0;
-}`;
-
-  const cmakeLists = `cmake_minimum_required(VERSION 3.10)
-project(${name.replace(/\s+/g, '_')})
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-# Add source files
-add_executable(\${PROJECT_NAME} src/main.cpp)
-
-# Include directories
-target_include_directories(\${PROJECT_NAME} PUBLIC include)`;
-
-  const buildScript = `#!/bin/bash
-# Build script for ${name}
-
-mkdir -p build
-cd build
-cmake ..
-make
-echo "Build complete. Executable: ./build/${name.replace(/\s+/g, '_')}"`;
-
-  const buildBat = `@echo off
-REM Build script for ${name}
-
-if not exist build mkdir build
-cd build
-cmake -G "MinGW Makefiles" ..
-mingw32-make
-echo Build complete. Executable: build\\${name.replace(/\s+/g, '_')}.exe
-pause`;
-
-  await fs.mkdir(path.join(projectPath, 'src'), { recursive: true });
-  await fs.mkdir(path.join(projectPath, 'include'), { recursive: true });
-  await fs.mkdir(path.join(projectPath, 'tests'), { recursive: true });
-  
-  await fs.writeFile(path.join(projectPath, 'src', 'main.cpp'), mainCpp);
-  await fs.writeFile(path.join(projectPath, 'CMakeLists.txt'), cmakeLists);
-  await fs.writeFile(path.join(projectPath, 'build.sh'), buildScript);
-  await fs.writeFile(path.join(projectPath, 'build.bat'), buildBat);
-  await fs.writeFile(path.join(projectPath, '.gitignore'), 'build/\n*.exe\n*.o\n*.out');
-  await fs.writeFile(path.join(projectPath, 'README.md'), `# ${name}\n\n${description}\n\n## Building\n\n### Linux/Mac\n\`\`\`bash\n./build.sh\n\`\`\`\n\n### Windows\n\`\`\`cmd\nbuild.bat\n\`\`\``);
-}
-
-async function createJavaProject(projectPath, name, description) {
-  const className = name.replace(/[^a-zA-Z0-9]/g, '');
-  const packageName = `com.${className.toLowerCase()}`;
-  
-  const mainJava = `package ${packageName};
-
-/**
- * ${name}
- * ${description}
- */
-public class Main {
-    public static void main(String[] args) {
-        System.out.println("Welcome to ${name}");
-        System.out.println("${description}");
-        
-        // Your code here
-        Application app = new Application();
-        app.run();
-    }
-}`;
-
-  const appJava = `package ${packageName};
-
-public class Application {
-    public void run() {
-        System.out.println("Application is running...");
-    }
-}`;
-
-  const pomXml = `<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
-         http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
-    <groupId>${packageName}</groupId>
-    <artifactId>${className.toLowerCase()}</artifactId>
-    <version>1.0-SNAPSHOT</version>
-
-    <properties>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
-
-    <dependencies>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.13.2</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-</project>`;
-
-  const srcPath = path.join(projectPath, 'src', 'main', 'java', ...packageName.split('.'));
-  const testPath = path.join(projectPath, 'src', 'test', 'java', ...packageName.split('.'));
-  
-  await fs.mkdir(srcPath, { recursive: true });
-  await fs.mkdir(testPath, { recursive: true });
-  
-  await fs.writeFile(path.join(srcPath, 'Main.java'), mainJava);
-  await fs.writeFile(path.join(srcPath, 'Application.java'), appJava);
-  await fs.writeFile(path.join(projectPath, 'pom.xml'), pomXml);
-  await fs.writeFile(path.join(projectPath, '.gitignore'), 'target/\n*.class\n.idea/\n*.iml');
-  await fs.writeFile(path.join(projectPath, 'README.md'), `# ${name}\n\n${description}\n\n## Build and Run\n\n\`\`\`bash\nmvn clean compile\nmvn exec:java -Dexec.mainClass="${packageName}.Main"\n\`\`\``);
-}
-
-async function createEmptyProject(projectPath, name, description) {
-  const readme = `# ${name}\n\n${description}\n\n## Getting Started\n\nThis is an empty project. Add your files here to get started.`;
-
-  await fs.writeFile(path.join(projectPath, 'README.md'), readme);
-  await fs.writeFile(path.join(projectPath, '.gitignore'), '.DS_Store\n*.log\nnode_modules/');
-}
-
+// Project creation functions moved to main/project-template-builders.js
 // Delete project files permanently
 ipcMain.handle('delete-project-files', async (event, projectPath) => {
   try {
@@ -6700,136 +6052,14 @@ ipcMain.handle('save-recent-projects', async (event, projects) => {
 // EXTENSION SYSTEM IPC HANDLERS
 // ============================================
 
-// Get all installed extensions
-ipcMain.handle('get-installed-extensions', async () => {
-  try {
-    const extensions = extensionManager.getInstalledExtensions();
-    return { success: true, extensions };
-  } catch (error) {
-    logger.error('Failed to get installed extensions', { error: error.message });
-    return { success: false, error: error.message, extensions: [] };
-  }
-});
-
-// Install extension
-ipcMain.handle('install-extension', async (event, extensionData) => {
-  try {
-    const result = await extensionManager.installExtension(extensionData);
-
-    if (result.success && mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('extension-installed', result.extension);
-    }
-
-    return result;
-  } catch (error) {
-    logger.error('Failed to install extension', { error: error.message });
-    return { success: false, error: error.message };
-  }
-});
-
-// Uninstall extension
-ipcMain.handle('uninstall-extension', async (event, extensionId) => {
-  try {
-    const result = await extensionManager.uninstallExtension(extensionId);
-
-    if (result.success && mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('extension-uninstalled', extensionId);
-    }
-
-    return result;
-  } catch (error) {
-    logger.error('Failed to uninstall extension', { error: error.message });
-    return { success: false, error: error.message };
-  }
-});
-
-// Enable extension
-ipcMain.handle('enable-extension', async (event, extensionId) => {
-  try {
-    const result = await extensionManager.enableExtension(extensionId);
-
-    if (result.success && mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('extension-enabled', extensionId);
-    }
-
-    return result;
-  } catch (error) {
-    logger.error('Failed to enable extension', { error: error.message });
-    return { success: false, error: error.message };
-  }
-});
-
-// Disable extension
-ipcMain.handle('disable-extension', async (event, extensionId) => {
-  try {
-    const result = await extensionManager.disableExtension(extensionId);
-
-    if (result.success && mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('extension-disabled', extensionId);
-    }
-
-    return result;
-  } catch (error) {
-    logger.error('Failed to disable extension', { error: error.message });
-    return { success: false, error: error.message };
-  }
-});
-
-// Get theme extensions
-ipcMain.handle('get-theme-extensions', async () => {
-  try {
-    const themes = extensionManager.getThemeExtensions();
-    return { success: true, themes };
-  } catch (error) {
-    logger.error('Failed to get theme extensions', { error: error.message });
-    return { success: false, error: error.message, themes: [] };
-  }
-});
-
-// Load theme CSS
-ipcMain.handle('load-theme-css', async (event, themeId) => {
-  try {
-    return await extensionManager.getThemeCSS(themeId);
-  } catch (error) {
-    logger.error('Failed to load theme CSS', { themeId, error: error.message });
-    return { success: false, error: error.message };
-  }
-});
-
-// Get extension settings
-ipcMain.handle('get-extension-settings', async (event, extensionId) => {
-  try {
-    const settings = appSettings.extensions.settings[extensionId] || {};
-    return { success: true, settings };
-  } catch (error) {
-    logger.error('Failed to get extension settings', { extensionId, error: error.message });
-    return { success: false, error: error.message, settings: {} };
-  }
-});
-
-// Save extension settings
-ipcMain.handle('save-extension-settings', async (event, extensionId, settings) => {
-  try {
-    if (!appSettings.extensions.settings) {
-      appSettings.extensions.settings = {};
-    }
-
-    appSettings.extensions.settings[extensionId] = settings;
-    await saveSettings();
-
-    return { success: true };
-  } catch (error) {
-    logger.error('Failed to save extension settings', { extensionId, error: error.message });
-    return { success: false, error: error.message };
-  }
-});
-
-// Download theme from URL
-ipcMain.handle('download-theme', async (event, themeId, cssUrl, manifestData) => {
-  try {
-    return await extensionManager.downloadThemeFromURL(themeId, cssUrl, manifestData);
-  } catch (error) {
-    logger.error('Failed to download theme', { themeId, error: error.message });
-    return { success: false, error: error.message };
-  }
+registerExtensionIpcHandlers({
+  ipcMain,
+  extensionManager,
+  getMainWindow: () => mainWindow,
+  logger,
+  getAppSettings: () => appSettings,
+  setAppSettings: (nextSettings) => {
+    appSettings = nextSettings;
+  },
+  saveSettings
 });

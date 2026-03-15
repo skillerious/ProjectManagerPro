@@ -1,0 +1,22 @@
+{
+  "id": "palenight",
+  "name": "Palenight",
+  "displayName": "Palenight",
+  "description": "An elegant and juicy Material-like theme with vivid purple and blue hues. Rich jewel tones and carefully balanced contrast make every line of code feel luxurious.",
+  "author": "Olaolu Olawuyi",
+  "version": "2.1.0",
+  "category": "themes",
+  "type": "themes",
+  "main": "theme.css",
+  "icon": "fa-moon",
+  "rating": 4.8,
+  "downloads": 2100000,
+  "tags": ["dark", "material", "purple", "vibrant"],
+  "colors": ["#292d3e", "#82aaff", "#c792ea", "#c3e88d", "#ffcb6b", "#ff5370"],
+  "preview": {
+    "background": "#292d3e",
+    "accent": "#82aaff",
+    "secondary": "#c792ea",
+    "palette": ["#292d3e", "#82aaff", "#c792ea", "#c3e88d", "#ffcb6b", "#ff5370"]
+  }
+}

@@ -1,0 +1,54 @@
+/* ============================================
+   Tokyo Night
+   Downtown Tokyo lights at night
+   Author: enkia
+   ============================================ */
+
+:root {
+  --bg-primary: #1a1b26;
+  --bg-secondary: #16161e;
+  --bg-tertiary: #24283b;
+  --bg-hover: #292e42;
+  --text-primary: #c0caf5;
+  --text-secondary: #565f89;
+  --text-highlight: #e4e8fb;
+  --accent-primary: #7aa2f7;
+  --accent-secondary: #bb9af7;
+  --accent-hover: #5d8af0;
+  --border-color: #3b4261;
+  --success: #9ece6a;
+  --warning: #e0af68;
+  --error: #f7768e;
+  --info: #2ac3de;
+}
+
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(122, 162, 247, 0.16);
+}
+
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
