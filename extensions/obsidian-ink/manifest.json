@@ -1,0 +1,42 @@
+﻿{
+    "id":  "obsidian-ink",
+    "name":  "Obsidian Ink",
+    "displayName":  "Obsidian Ink",
+    "description":  "Deep obsidian panels paired with inky accents and strong UI separation.",
+    "author":  "Ink Foundry",
+    "version":  "1.1.6",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-book",
+    "rating":  4.7,
+    "downloads":  610000,
+    "tags":  [
+                 "dark",
+                 "obsidian",
+                 "ink",
+                 "editorial",
+                 "sharp"
+             ],
+    "colors":  [
+                   "#11131A",
+                   "#64B5F6",
+                   "#BA68C8",
+                   "#81C784",
+                   "#FFCA28",
+                   "#E57373"
+               ],
+    "preview":  {
+                    "background":  "#11131A",
+                    "accent":  "#64B5F6",
+                    "secondary":  "#BA68C8",
+                    "palette":  [
+                                    "#11131A",
+                                    "#64B5F6",
+                                    "#BA68C8",
+                                    "#81C784",
+                                    "#FFCA28",
+                                    "#E57373"
+                                ]
+                }
+}

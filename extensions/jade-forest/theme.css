@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Jade Forest
+   A jade-heavy dark palette with natural greens and low-fatigue contrast.
+   Author: Jade Studio
+   ============================================ */
+:root {
+  --bg-primary: #132A22;
+  --bg-secondary: #0F211B;
+  --bg-tertiary: #2B3F38;
+  --bg-hover: #3C4E48;
+  --text-primary: #DCE4EE;
+  --text-secondary: #788788;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #4DB6AC;
+  --accent-secondary: #80CBC4;
+  --accent-hover: #69C2B9;
+  --border-color: #305048;
+  --success: #81C784;
+  --warning: #DCE775;
+  --error: #EF5350;
+  --info: #66C0B8;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(77, 182, 172, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

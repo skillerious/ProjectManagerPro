@@ -1,0 +1,42 @@
+﻿{
+    "id":  "cobalt2",
+    "name":  "Cobalt 2",
+    "displayName":  "Cobalt 2",
+    "description":  "Electric blues and golden accents in a classic high-energy coding palette.",
+    "author":  "Wes Bos",
+    "version":  "2.3.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-bolt",
+    "rating":  4.9,
+    "downloads":  2300000,
+    "tags":  [
+                 "dark",
+                 "cobalt",
+                 "electric",
+                 "high-contrast",
+                 "popular"
+             ],
+    "colors":  [
+                   "#193549",
+                   "#FFC600",
+                   "#FF9D00",
+                   "#3AD900",
+                   "#FFEE80",
+                   "#FF628C"
+               ],
+    "preview":  {
+                    "background":  "#193549",
+                    "accent":  "#FFC600",
+                    "secondary":  "#FF9D00",
+                    "palette":  [
+                                    "#193549",
+                                    "#FFC600",
+                                    "#FF9D00",
+                                    "#3AD900",
+                                    "#FFEE80",
+                                    "#FF628C"
+                                ]
+                }
+}

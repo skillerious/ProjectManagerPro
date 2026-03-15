@@ -1,0 +1,42 @@
+﻿{
+    "id":  "font-fira-code",
+    "name":  "Fira Code Focus",
+    "displayName":  "Fira Code Focus",
+    "description":  "A balanced dark theme that emphasizes Fira Code and ligature-friendly typography.",
+    "author":  "Typography Studio",
+    "version":  "1.0.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-font",
+    "rating":  4.8,
+    "downloads":  590000,
+    "tags":  [
+                 "dark",
+                 "fonts",
+                 "fira-code",
+                 "ligatures",
+                 "developer"
+             ],
+    "colors":  [
+                   "#1B1E24",
+                   "#7DCFFF",
+                   "#C6A0F6",
+                   "#A6DA95",
+                   "#EED49F",
+                   "#ED8796"
+               ],
+    "preview":  {
+                    "background":  "#1B1E24",
+                    "accent":  "#7DCFFF",
+                    "secondary":  "#C6A0F6",
+                    "palette":  [
+                                    "#1B1E24",
+                                    "#7DCFFF",
+                                    "#C6A0F6",
+                                    "#A6DA95",
+                                    "#EED49F",
+                                    "#ED8796"
+                                ]
+                }
+}

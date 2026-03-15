@@ -1,0 +1,42 @@
+﻿{
+    "id":  "font-ibm-plex-sans",
+    "name":  "IBM Plex Sans",
+    "displayName":  "IBM Plex Sans",
+    "description":  "Professional dark UI styling with IBM Plex Sans for polished interface text.",
+    "author":  "Typography Studio",
+    "version":  "1.0.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-font",
+    "rating":  4.6,
+    "downloads":  360000,
+    "tags":  [
+                 "dark",
+                 "fonts",
+                 "sans",
+                 "ibm",
+                 "professional"
+             ],
+    "colors":  [
+                   "#1F2937",
+                   "#60A5FA",
+                   "#C084FC",
+                   "#34D399",
+                   "#FBBF24",
+                   "#F87171"
+               ],
+    "preview":  {
+                    "background":  "#1F2937",
+                    "accent":  "#60A5FA",
+                    "secondary":  "#C084FC",
+                    "palette":  [
+                                    "#1F2937",
+                                    "#60A5FA",
+                                    "#C084FC",
+                                    "#34D399",
+                                    "#FBBF24",
+                                    "#F87171"
+                                ]
+                }
+}

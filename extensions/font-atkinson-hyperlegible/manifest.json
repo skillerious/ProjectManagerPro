@@ -1,0 +1,42 @@
+﻿{
+    "id":  "font-atkinson-hyperlegible",
+    "name":  "Atkinson Hyperlegible",
+    "displayName":  "Atkinson Hyperlegible",
+    "description":  "Readability-first dark profile centered on Atkinson Hyperlegible style letterforms.",
+    "author":  "Typography Studio",
+    "version":  "1.0.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-eye",
+    "rating":  4.6,
+    "downloads":  300000,
+    "tags":  [
+                 "dark",
+                 "fonts",
+                 "readability",
+                 "accessibility",
+                 "clear"
+             ],
+    "colors":  [
+                   "#182028",
+                   "#60A5FA",
+                   "#A78BFA",
+                   "#4ADE80",
+                   "#FACC15",
+                   "#FB7185"
+               ],
+    "preview":  {
+                    "background":  "#182028",
+                    "accent":  "#60A5FA",
+                    "secondary":  "#A78BFA",
+                    "palette":  [
+                                    "#182028",
+                                    "#60A5FA",
+                                    "#A78BFA",
+                                    "#4ADE80",
+                                    "#FACC15",
+                                    "#FB7185"
+                                ]
+                }
+}

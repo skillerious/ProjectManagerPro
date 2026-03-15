@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Ruby Night
+   Dark ruby ambience with rose accents and vivid highlights for key actions.
+   Author: Ruby Collective
+   ============================================ */
+:root {
+  --bg-primary: #21121A;
+  --bg-secondary: #1A0E14;
+  --bg-tertiary: #372A31;
+  --bg-hover: #473B41;
+  --text-primary: #DCE4EE;
+  --text-secondary: #7E7B84;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #EF476F;
+  --accent-secondary: #F78C6B;
+  --accent-hover: #F26486;
+  --border-color: #512E3A;
+  --success: #7BD389;
+  --warning: #FFD166;
+  --error: #FF5D8F;
+  --info: #F36A6D;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(239, 71, 111, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

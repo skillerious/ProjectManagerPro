@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Poimandres
+   A calm dark atmosphere with icy highlights and subtle pastel contrast.
+   Author: Poimandres Team
+   ============================================ */
+:root {
+  --bg-primary: #1B1E28;
+  --bg-secondary: #15171F;
+  --bg-tertiary: #32343E;
+  --bg-hover: #42444D;
+  --text-primary: #DCE4EE;
+  --text-secondary: #7C818B;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #ADD7FF;
+  --accent-secondary: #5DE4C7;
+  --accent-hover: #BADDFF;
+  --border-color: #434B59;
+  --success: #5DE4C7;
+  --warning: #FFFAC2;
+  --error: #D0679D;
+  --info: #85DEE3;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(173, 215, 255, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

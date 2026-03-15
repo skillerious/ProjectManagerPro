@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Sunset Horizon
+   Evening horizon tones with amber gradients and gentle warm contrast.
+   Author: Horizon Atelier
+   ============================================ */
+:root {
+  --bg-primary: #2B1D1A;
+  --bg-secondary: #221714;
+  --bg-tertiary: #403431;
+  --bg-hover: #4F4441;
+  --text-primary: #DCE4EE;
+  --text-secondary: #848084;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #FF8F00;
+  --accent-secondary: #FFB74D;
+  --accent-hover: #FFA129;
+  --border-color: #5B412A;
+  --success: #8BC34A;
+  --warning: #FFD180;
+  --error: #FF5252;
+  --info: #FFA326;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(255, 143, 0, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

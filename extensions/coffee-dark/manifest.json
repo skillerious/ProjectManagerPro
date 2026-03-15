@@ -1,0 +1,42 @@
+﻿{
+    "id":  "coffee-dark",
+    "name":  "Coffee Dark",
+    "displayName":  "Coffee Dark",
+    "description":  "Roasted coffee tones with creamy accents for a warm late-night workflow.",
+    "author":  "Roast Labs",
+    "version":  "1.0.9",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-mug-hot",
+    "rating":  4.6,
+    "downloads":  350000,
+    "tags":  [
+                 "dark",
+                 "coffee",
+                 "brown",
+                 "warm",
+                 "cozy"
+             ],
+    "colors":  [
+                   "#2B211D",
+                   "#D7B899",
+                   "#A1887F",
+                   "#81C784",
+                   "#FFCC80",
+                   "#E57373"
+               ],
+    "preview":  {
+                    "background":  "#2B211D",
+                    "accent":  "#D7B899",
+                    "secondary":  "#A1887F",
+                    "palette":  [
+                                    "#2B211D",
+                                    "#D7B899",
+                                    "#A1887F",
+                                    "#81C784",
+                                    "#FFCC80",
+                                    "#E57373"
+                                ]
+                }
+}

@@ -1,0 +1,76 @@
+﻿/* ============================================
+   IBM Plex Sans
+   Professional dark UI styling with IBM Plex Sans for polished interface text.
+   Author: Typography Studio
+   ============================================ */
+:root {
+  --bg-primary: #1F2937;
+  --bg-secondary: #121722;
+  --bg-tertiary: #202838;
+  --bg-hover: #293347;
+  --text-primary: #dde6f4;
+  --text-secondary: #8f9bb0;
+  --text-highlight: #ffffff;
+  --accent-primary: #60A5FA;
+  --accent-secondary: #C084FC;
+  --accent-hover: #9ab8ff;
+  --border-color: #344057;
+  --success: #34D399;
+  --warning: #FBBF24;
+  --error: #F87171;
+  --info: #7dd3fc;
+  --font-ui: 'IBM Plex Sans', 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-heading: 'IBM Plex Sans', 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Cascadia Code', Consolas, monospace;
+}
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-ui);
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.title,
+.modal-header h2 {
+  font-family: var(--font-heading);
+}
+code,
+pre,
+kbd,
+samp,
+.mono,
+.terminal,
+.terminal-output {
+  font-family: var(--font-mono);
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(125, 211, 252, 0.16);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

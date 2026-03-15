@@ -1,0 +1,42 @@
+﻿{
+    "id":  "material-oceanic",
+    "name":  "Material Oceanic",
+    "displayName":  "Material Oceanic",
+    "description":  "Oceanic depth with material-inspired contrast and crisp cyan highlights.",
+    "author":  "Material Collective",
+    "version":  "2.0.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-water",
+    "rating":  4.8,
+    "downloads":  1750000,
+    "tags":  [
+                 "dark",
+                 "material",
+                 "teal",
+                 "balanced",
+                 "modern"
+             ],
+    "colors":  [
+                   "#263238",
+                   "#00ACC1",
+                   "#80CBC4",
+                   "#C3E88D",
+                   "#FFCB6B",
+                   "#F07178"
+               ],
+    "preview":  {
+                    "background":  "#263238",
+                    "accent":  "#00ACC1",
+                    "secondary":  "#80CBC4",
+                    "palette":  [
+                                    "#263238",
+                                    "#00ACC1",
+                                    "#80CBC4",
+                                    "#C3E88D",
+                                    "#FFCB6B",
+                                    "#F07178"
+                                ]
+                }
+}

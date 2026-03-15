@@ -1,0 +1,42 @@
+﻿{
+    "id":  "midnight-teal",
+    "name":  "Midnight Teal",
+    "displayName":  "Midnight Teal",
+    "description":  "Dark cyan atmosphere with bright teal highlights and stable legibility.",
+    "author":  "Teal Works",
+    "version":  "1.2.7",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-water",
+    "rating":  4.7,
+    "downloads":  570000,
+    "tags":  [
+                 "dark",
+                 "teal",
+                 "midnight",
+                 "clean",
+                 "modern"
+             ],
+    "colors":  [
+                   "#102027",
+                   "#26C6DA",
+                   "#80DEEA",
+                   "#66BB6A",
+                   "#FFCA28",
+                   "#EF5350"
+               ],
+    "preview":  {
+                    "background":  "#102027",
+                    "accent":  "#26C6DA",
+                    "secondary":  "#80DEEA",
+                    "palette":  [
+                                    "#102027",
+                                    "#26C6DA",
+                                    "#80DEEA",
+                                    "#66BB6A",
+                                    "#FFCA28",
+                                    "#EF5350"
+                                ]
+                }
+}

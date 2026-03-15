@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Forest Night
+   Woodland-inspired dark surfaces with mossy greens and earthy warmth.
+   Author: Evergreen Forge
+   ============================================ */
+:root {
+  --bg-primary: #1F2A1F;
+  --bg-secondary: #182118;
+  --bg-tertiary: #353F35;
+  --bg-hover: #454E45;
+  --text-primary: #DCE4EE;
+  --text-secondary: #7E8786;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #7FBBB3;
+  --accent-secondary: #83C092;
+  --accent-hover: #93C6BF;
+  --border-color: #3F5047;
+  --success: #A7C080;
+  --warning: #DBBC7F;
+  --error: #E67E80;
+  --info: #81BEA2;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(127, 187, 179, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Coffee Dark
+   Roasted coffee tones with creamy accents for a warm late-night workflow.
+   Author: Roast Labs
+   ============================================ */
+:root {
+  --bg-primary: #2B211D;
+  --bg-secondary: #221A17;
+  --bg-tertiary: #403734;
+  --bg-hover: #4F4744;
+  --text-primary: #DCE4EE;
+  --text-secondary: #848286;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #D7B899;
+  --accent-secondary: #A1887F;
+  --accent-hover: #DDC3A9;
+  --border-color: #554942;
+  --success: #81C784;
+  --warning: #FFCC80;
+  --error: #E57373;
+  --info: #BCA08C;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(215, 184, 153, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

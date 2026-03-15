@@ -1,0 +1,42 @@
+﻿{
+    "id":  "font-manrope",
+    "name":  "Manrope Minimal",
+    "displayName":  "Manrope Minimal",
+    "description":  "Low-noise dark palette paired with Manrope-style typography for clean interface density.",
+    "author":  "Typography Studio",
+    "version":  "1.0.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-minimize",
+    "rating":  4.5,
+    "downloads":  280000,
+    "tags":  [
+                 "dark",
+                 "fonts",
+                 "manrope",
+                 "minimal",
+                 "ui"
+             ],
+    "colors":  [
+                   "#161B22",
+                   "#58A6FF",
+                   "#BC8CFF",
+                   "#3FB950",
+                   "#D29922",
+                   "#F85149"
+               ],
+    "preview":  {
+                    "background":  "#161B22",
+                    "accent":  "#58A6FF",
+                    "secondary":  "#BC8CFF",
+                    "palette":  [
+                                    "#161B22",
+                                    "#58A6FF",
+                                    "#BC8CFF",
+                                    "#3FB950",
+                                    "#D29922",
+                                    "#F85149"
+                                ]
+                }
+}

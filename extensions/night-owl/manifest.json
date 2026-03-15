@@ -1,0 +1,42 @@
+﻿{
+    "id":  "night-owl",
+    "name":  "Night Owl",
+    "displayName":  "Night Owl",
+    "description":  "A midnight blue theme with luminous accents designed for long coding sessions.",
+    "author":  "Night Owl Studio",
+    "version":  "1.2.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-moon",
+    "rating":  4.9,
+    "downloads":  2100000,
+    "tags":  [
+                 "dark",
+                 "blue",
+                 "contrast",
+                 "night",
+                 "popular"
+             ],
+    "colors":  [
+                   "#011627",
+                   "#82AAFF",
+                   "#C792EA",
+                   "#22DA6E",
+                   "#ECC48D",
+                   "#EF5350"
+               ],
+    "preview":  {
+                    "background":  "#011627",
+                    "accent":  "#82AAFF",
+                    "secondary":  "#C792EA",
+                    "palette":  [
+                                    "#011627",
+                                    "#82AAFF",
+                                    "#C792EA",
+                                    "#22DA6E",
+                                    "#ECC48D",
+                                    "#EF5350"
+                                ]
+                }
+}

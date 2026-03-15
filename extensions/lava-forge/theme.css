@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Lava Forge
+   Forged iron dark UI with molten orange accents and high visual energy.
+   Author: Forge Themes
+   ============================================ */
+:root {
+  --bg-primary: #1D1412;
+  --bg-secondary: #17100E;
+  --bg-tertiary: #342C2A;
+  --bg-hover: #443D3B;
+  --text-primary: #DCE4EE;
+  --text-secondary: #7C7C80;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #FF7043;
+  --accent-secondary: #FFAB40;
+  --accent-hover: #FF8761;
+  --border-color: #50362E;
+  --success: #8BC34A;
+  --warning: #FFD54F;
+  --error: #FF5252;
+  --info: #FF8E42;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(255, 112, 67, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

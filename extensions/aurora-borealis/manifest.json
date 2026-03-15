@@ -1,0 +1,42 @@
+﻿{
+    "id":  "aurora-borealis",
+    "name":  "Aurora Borealis",
+    "displayName":  "Aurora Borealis",
+    "description":  "Polar-night blues with aurora-inspired accents for vibrant but calm coding.",
+    "author":  "Aurora Labs",
+    "version":  "1.3.2",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-star",
+    "rating":  4.8,
+    "downloads":  690000,
+    "tags":  [
+                 "dark",
+                 "aurora",
+                 "blue",
+                 "violet",
+                 "northern"
+             ],
+    "colors":  [
+                   "#0F1B2B",
+                   "#4FC3F7",
+                   "#9575CD",
+                   "#66BB6A",
+                   "#FFD54F",
+                   "#EF5350"
+               ],
+    "preview":  {
+                    "background":  "#0F1B2B",
+                    "accent":  "#4FC3F7",
+                    "secondary":  "#9575CD",
+                    "palette":  [
+                                    "#0F1B2B",
+                                    "#4FC3F7",
+                                    "#9575CD",
+                                    "#66BB6A",
+                                    "#FFD54F",
+                                    "#EF5350"
+                                ]
+                }
+}

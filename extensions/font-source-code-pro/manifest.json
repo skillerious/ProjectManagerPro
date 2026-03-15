@@ -1,0 +1,42 @@
+﻿{
+    "id":  "font-source-code-pro",
+    "name":  "Source Code Pro Sharp",
+    "displayName":  "Source Code Pro Sharp",
+    "description":  "A dark appearance with Source Code Pro-inspired spacing for steady line scanning.",
+    "author":  "Typography Studio",
+    "version":  "1.0.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-terminal",
+    "rating":  4.7,
+    "downloads":  470000,
+    "tags":  [
+                 "dark",
+                 "fonts",
+                 "source-code-pro",
+                 "adobe",
+                 "terminal"
+             ],
+    "colors":  [
+                   "#1A1D24",
+                   "#64B5F6",
+                   "#BA68C8",
+                   "#81C784",
+                   "#FFD54F",
+                   "#E57373"
+               ],
+    "preview":  {
+                    "background":  "#1A1D24",
+                    "accent":  "#64B5F6",
+                    "secondary":  "#BA68C8",
+                    "palette":  [
+                                    "#1A1D24",
+                                    "#64B5F6",
+                                    "#BA68C8",
+                                    "#81C784",
+                                    "#FFD54F",
+                                    "#E57373"
+                                ]
+                }
+}

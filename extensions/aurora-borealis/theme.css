@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Aurora Borealis
+   Polar-night blues with aurora-inspired accents for vibrant but calm coding.
+   Author: Aurora Labs
+   ============================================ */
+:root {
+  --bg-primary: #0F1B2B;
+  --bg-secondary: #0C1522;
+  --bg-tertiary: #273240;
+  --bg-hover: #38424F;
+  --text-primary: #DCE4EE;
+  --text-secondary: #76808C;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #4FC3F7;
+  --accent-secondary: #9575CD;
+  --accent-hover: #6BCDF8;
+  --border-color: #2D465A;
+  --success: #66BB6A;
+  --warning: #FFD54F;
+  --error: #EF5350;
+  --info: #729CE2;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(79, 195, 247, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

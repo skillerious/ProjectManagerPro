@@ -1,0 +1,42 @@
+﻿{
+    "id":  "arctic-night",
+    "name":  "Arctic Night",
+    "displayName":  "Arctic Night",
+    "description":  "Cold northern tones with frosted accents and a steady visual rhythm.",
+    "author":  "Nordic Labs",
+    "version":  "1.3.4",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-snowflake",
+    "rating":  4.8,
+    "downloads":  1020000,
+    "tags":  [
+                 "dark",
+                 "arctic",
+                 "blue",
+                 "calm",
+                 "nordic"
+             ],
+    "colors":  [
+                   "#2E3440",
+                   "#88C0D0",
+                   "#81A1C1",
+                   "#A3BE8C",
+                   "#EBCB8B",
+                   "#BF616A"
+               ],
+    "preview":  {
+                    "background":  "#2E3440",
+                    "accent":  "#88C0D0",
+                    "secondary":  "#81A1C1",
+                    "palette":  [
+                                    "#2E3440",
+                                    "#88C0D0",
+                                    "#81A1C1",
+                                    "#A3BE8C",
+                                    "#EBCB8B",
+                                    "#BF616A"
+                                ]
+                }
+}

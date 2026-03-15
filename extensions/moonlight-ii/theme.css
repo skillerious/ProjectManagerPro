@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Moonlight II
+   A soft indigo palette with moonlit contrast and smooth readability.
+   Author: Moonlight Themes
+   ============================================ */
+:root {
+  --bg-primary: #222436;
+  --bg-secondary: #1B1C2A;
+  --bg-tertiary: #383A4A;
+  --bg-hover: #484A58;
+  --text-primary: #DCE4EE;
+  --text-secondary: #7F8492;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #82AAFF;
+  --accent-secondary: #C099FF;
+  --accent-hover: #96B8FF;
+  --border-color: #424A63;
+  --success: #C3E88D;
+  --warning: #FF966C;
+  --error: #FF757F;
+  --info: #A1A2FF;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(130, 170, 255, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

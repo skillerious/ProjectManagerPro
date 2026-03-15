@@ -1,0 +1,42 @@
+﻿{
+    "id":  "font-jetbrains-mono",
+    "name":  "JetBrains Mono UI",
+    "displayName":  "JetBrains Mono UI",
+    "description":  "Dark editor theme tuned around JetBrains Mono for consistent coding readability.",
+    "author":  "Typography Studio",
+    "version":  "1.0.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-font",
+    "rating":  4.8,
+    "downloads":  620000,
+    "tags":  [
+                 "dark",
+                 "fonts",
+                 "monospace",
+                 "coding",
+                 "readable"
+             ],
+    "colors":  [
+                   "#171A21",
+                   "#8BE9FD",
+                   "#BD93F9",
+                   "#50FA7B",
+                   "#F1FA8C",
+                   "#FF5555"
+               ],
+    "preview":  {
+                    "background":  "#171A21",
+                    "accent":  "#8BE9FD",
+                    "secondary":  "#BD93F9",
+                    "palette":  [
+                                    "#171A21",
+                                    "#8BE9FD",
+                                    "#BD93F9",
+                                    "#50FA7B",
+                                    "#F1FA8C",
+                                    "#FF5555"
+                                ]
+                }
+}

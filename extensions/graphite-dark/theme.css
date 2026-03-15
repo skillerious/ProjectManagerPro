@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Graphite Dark
+   A neutral graphite dark mode focused on low distraction and crisp edges.
+   Author: Graphite Works
+   ============================================ */
+:root {
+  --bg-primary: #232629;
+  --bg-secondary: #1B1E20;
+  --bg-tertiary: #393C3E;
+  --bg-hover: #494C4D;
+  --text-primary: #DCE4EE;
+  --text-secondary: #80858C;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #7AA2F7;
+  --accent-secondary: #9D7CD8;
+  --accent-hover: #8FB1F8;
+  --border-color: #424A58;
+  --success: #98C379;
+  --warning: #E5C07B;
+  --error: #E06C75;
+  --info: #8C8FE8;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(122, 162, 247, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

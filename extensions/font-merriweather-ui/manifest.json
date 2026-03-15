@@ -1,0 +1,42 @@
+﻿{
+    "id":  "font-merriweather-ui",
+    "name":  "Merriweather UI",
+    "displayName":  "Merriweather UI",
+    "description":  "Editorial dark mode with Merriweather-style serif headings and readable body text.",
+    "author":  "Typography Studio",
+    "version":  "1.0.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-book-open",
+    "rating":  4.4,
+    "downloads":  190000,
+    "tags":  [
+                 "dark",
+                 "fonts",
+                 "serif",
+                 "reading",
+                 "editorial"
+             ],
+    "colors":  [
+                   "#1F1B24",
+                   "#89B4FA",
+                   "#CBA6F7",
+                   "#A6E3A1",
+                   "#F9E2AF",
+                   "#F38BA8"
+               ],
+    "preview":  {
+                    "background":  "#1F1B24",
+                    "accent":  "#89B4FA",
+                    "secondary":  "#CBA6F7",
+                    "palette":  [
+                                    "#1F1B24",
+                                    "#89B4FA",
+                                    "#CBA6F7",
+                                    "#A6E3A1",
+                                    "#F9E2AF",
+                                    "#F38BA8"
+                                ]
+                }
+}

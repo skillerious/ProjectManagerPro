@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Horizon Dark
+   Sunset-inspired dark tones with coral accents and clean text hierarchy.
+   Author: Horizon Labs
+   ============================================ */
+:root {
+  --bg-primary: #1C1E26;
+  --bg-secondary: #16171E;
+  --bg-tertiary: #33343C;
+  --bg-hover: #43444C;
+  --text-primary: #DCE4EE;
+  --text-secondary: #7C818A;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #E95678;
+  --accent-secondary: #FAB795;
+  --accent-hover: #ED718E;
+  --border-color: #4C3944;
+  --success: #29D398;
+  --warning: #F09383;
+  --error: #F43E5C;
+  --info: #F28686;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(233, 86, 120, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

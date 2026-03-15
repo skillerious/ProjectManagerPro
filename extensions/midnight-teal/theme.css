@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Midnight Teal
+   Dark cyan atmosphere with bright teal highlights and stable legibility.
+   Author: Teal Works
+   ============================================ */
+:root {
+  --bg-primary: #102027;
+  --bg-secondary: #0C191E;
+  --bg-tertiary: #28363D;
+  --bg-hover: #39464D;
+  --text-primary: #DCE4EE;
+  --text-secondary: #76828A;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #26C6DA;
+  --accent-secondary: #80DEEA;
+  --accent-hover: #49CFE0;
+  --border-color: #284A53;
+  --success: #66BB6A;
+  --warning: #FFCA28;
+  --error: #EF5350;
+  --info: #53D2E2;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(38, 198, 218, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

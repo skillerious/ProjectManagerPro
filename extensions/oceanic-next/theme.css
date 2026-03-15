@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Oceanic Next
+   Muted maritime hues with polished blues and precise readability.
+   Author: Oceanic Contributors
+   ============================================ */
+:root {
+  --bg-primary: #1B2B34;
+  --bg-secondary: #152229;
+  --bg-tertiary: #324048;
+  --bg-hover: #424F57;
+  --text-primary: #DCE4EE;
+  --text-secondary: #7C8891;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #6699CC;
+  --accent-secondary: #C594C5;
+  --accent-hover: #7EA9D4;
+  --border-color: #394C5A;
+  --success: #99C794;
+  --warning: #FAC863;
+  --error: #EC5F67;
+  --info: #9696C8;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(102, 153, 204, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

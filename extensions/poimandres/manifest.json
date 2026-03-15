@@ -1,0 +1,42 @@
+﻿{
+    "id":  "poimandres",
+    "name":  "Poimandres",
+    "displayName":  "Poimandres",
+    "description":  "A calm dark atmosphere with icy highlights and subtle pastel contrast.",
+    "author":  "Poimandres Team",
+    "version":  "1.5.2",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-feather",
+    "rating":  4.8,
+    "downloads":  1120000,
+    "tags":  [
+                 "dark",
+                 "cool",
+                 "teal",
+                 "pastel",
+                 "clean"
+             ],
+    "colors":  [
+                   "#1B1E28",
+                   "#ADD7FF",
+                   "#5DE4C7",
+                   "#5DE4C7",
+                   "#FFFAC2",
+                   "#D0679D"
+               ],
+    "preview":  {
+                    "background":  "#1B1E28",
+                    "accent":  "#ADD7FF",
+                    "secondary":  "#5DE4C7",
+                    "palette":  [
+                                    "#1B1E28",
+                                    "#ADD7FF",
+                                    "#5DE4C7",
+                                    "#5DE4C7",
+                                    "#FFFAC2",
+                                    "#D0679D"
+                                ]
+                }
+}

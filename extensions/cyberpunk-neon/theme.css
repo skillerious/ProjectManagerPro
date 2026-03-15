@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Cyberpunk Neon
+   Neon cyan and magenta over deep violet for a futuristic terminal city vibe.
+   Author: Neon District
+   ============================================ */
+:root {
+  --bg-primary: #140F1F;
+  --bg-secondary: #100C18;
+  --bg-tertiary: #2C2735;
+  --bg-hover: #3D3845;
+  --text-primary: #DCE4EE;
+  --text-secondary: #787A86;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #00F5FF;
+  --accent-secondary: #FF2E88;
+  --accent-hover: #29F7FF;
+  --border-color: #264451;
+  --success: #39FF14;
+  --warning: #FFE66D;
+  --error: #FF1744;
+  --info: #8092C4;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(0, 245, 255, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

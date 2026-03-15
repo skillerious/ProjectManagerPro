@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Matrix Code
+   Retro terminal energy with neon greens over deep blackened surfaces.
+   Author: Terminal Classics
+   ============================================ */
+:root {
+  --bg-primary: #0D0F0D;
+  --bg-secondary: #0A0C0A;
+  --bg-tertiary: #252725;
+  --bg-hover: #363836;
+  --text-primary: #DCE4EE;
+  --text-secondary: #747A7E;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #00FF41;
+  --accent-secondary: #00C853;
+  --accent-hover: #29FF5F;
+  --border-color: #204529;
+  --success: #00FF9C;
+  --warning: #FFD54F;
+  --error: #FF1744;
+  --info: #00E44A;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(0, 255, 65, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

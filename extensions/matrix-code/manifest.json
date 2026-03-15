@@ -1,0 +1,42 @@
+﻿{
+    "id":  "matrix-code",
+    "name":  "Matrix Code",
+    "displayName":  "Matrix Code",
+    "description":  "Retro terminal energy with neon greens over deep blackened surfaces.",
+    "author":  "Terminal Classics",
+    "version":  "1.0.5",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-terminal",
+    "rating":  4.7,
+    "downloads":  780000,
+    "tags":  [
+                 "dark",
+                 "green",
+                 "matrix",
+                 "terminal",
+                 "retro"
+             ],
+    "colors":  [
+                   "#0D0F0D",
+                   "#00FF41",
+                   "#00C853",
+                   "#00FF9C",
+                   "#FFD54F",
+                   "#FF1744"
+               ],
+    "preview":  {
+                    "background":  "#0D0F0D",
+                    "accent":  "#00FF41",
+                    "secondary":  "#00C853",
+                    "palette":  [
+                                    "#0D0F0D",
+                                    "#00FF41",
+                                    "#00C853",
+                                    "#00FF9C",
+                                    "#FFD54F",
+                                    "#FF1744"
+                                ]
+                }
+}

@@ -1,0 +1,42 @@
+﻿{
+    "id":  "graphite-dark",
+    "name":  "Graphite Dark",
+    "displayName":  "Graphite Dark",
+    "description":  "A neutral graphite dark mode focused on low distraction and crisp edges.",
+    "author":  "Graphite Works",
+    "version":  "1.2.1",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-cube",
+    "rating":  4.6,
+    "downloads":  420000,
+    "tags":  [
+                 "dark",
+                 "neutral",
+                 "graphite",
+                 "focused",
+                 "minimal"
+             ],
+    "colors":  [
+                   "#232629",
+                   "#7AA2F7",
+                   "#9D7CD8",
+                   "#98C379",
+                   "#E5C07B",
+                   "#E06C75"
+               ],
+    "preview":  {
+                    "background":  "#232629",
+                    "accent":  "#7AA2F7",
+                    "secondary":  "#9D7CD8",
+                    "palette":  [
+                                    "#232629",
+                                    "#7AA2F7",
+                                    "#9D7CD8",
+                                    "#98C379",
+                                    "#E5C07B",
+                                    "#E06C75"
+                                ]
+                }
+}

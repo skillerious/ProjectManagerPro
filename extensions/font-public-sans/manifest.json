@@ -1,0 +1,42 @@
+﻿{
+    "id":  "font-public-sans",
+    "name":  "Public Sans Civic",
+    "displayName":  "Public Sans Civic",
+    "description":  "Neutral dark styling with Public Sans influence for accessible, straightforward text.",
+    "author":  "Typography Studio",
+    "version":  "1.0.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-landmark",
+    "rating":  4.5,
+    "downloads":  260000,
+    "tags":  [
+                 "dark",
+                 "fonts",
+                 "public-sans",
+                 "neutral",
+                 "accessible"
+             ],
+    "colors":  [
+                   "#1D2430",
+                   "#7DD3FC",
+                   "#C4B5FD",
+                   "#86EFAC",
+                   "#FDE68A",
+                   "#FDA4AF"
+               ],
+    "preview":  {
+                    "background":  "#1D2430",
+                    "accent":  "#7DD3FC",
+                    "secondary":  "#C4B5FD",
+                    "palette":  [
+                                    "#1D2430",
+                                    "#7DD3FC",
+                                    "#C4B5FD",
+                                    "#86EFAC",
+                                    "#FDE68A",
+                                    "#FDA4AF"
+                                ]
+                }
+}

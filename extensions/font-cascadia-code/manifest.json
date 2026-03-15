@@ -1,0 +1,42 @@
+﻿{
+    "id":  "font-cascadia-code",
+    "name":  "Cascadia Code Grid",
+    "displayName":  "Cascadia Code Grid",
+    "description":  "A crisp, modern dark profile using Cascadia Code for clear UI and terminal text.",
+    "author":  "Typography Studio",
+    "version":  "1.0.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-keyboard",
+    "rating":  4.7,
+    "downloads":  510000,
+    "tags":  [
+                 "dark",
+                 "fonts",
+                 "cascadia",
+                 "windows",
+                 "clean"
+             ],
+    "colors":  [
+                   "#111827",
+                   "#93C5FD",
+                   "#A78BFA",
+                   "#86EFAC",
+                   "#FCD34D",
+                   "#F87171"
+               ],
+    "preview":  {
+                    "background":  "#111827",
+                    "accent":  "#93C5FD",
+                    "secondary":  "#A78BFA",
+                    "palette":  [
+                                    "#111827",
+                                    "#93C5FD",
+                                    "#A78BFA",
+                                    "#86EFAC",
+                                    "#FCD34D",
+                                    "#F87171"
+                                ]
+                }
+}

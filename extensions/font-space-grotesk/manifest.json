@@ -1,0 +1,42 @@
+﻿{
+    "id":  "font-space-grotesk",
+    "name":  "Space Grotesk",
+    "displayName":  "Space Grotesk",
+    "description":  "A geometric dark theme with Space Grotesk-like character and modern UI cadence.",
+    "author":  "Typography Studio",
+    "version":  "1.0.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-rocket",
+    "rating":  4.6,
+    "downloads":  320000,
+    "tags":  [
+                 "dark",
+                 "fonts",
+                 "space-grotesk",
+                 "modern",
+                 "geometric"
+             ],
+    "colors":  [
+                   "#141B2D",
+                   "#38BDF8",
+                   "#A78BFA",
+                   "#4ADE80",
+                   "#FACC15",
+                   "#FB7185"
+               ],
+    "preview":  {
+                    "background":  "#141B2D",
+                    "accent":  "#38BDF8",
+                    "secondary":  "#A78BFA",
+                    "palette":  [
+                                    "#141B2D",
+                                    "#38BDF8",
+                                    "#A78BFA",
+                                    "#4ADE80",
+                                    "#FACC15",
+                                    "#FB7185"
+                                ]
+                }
+}

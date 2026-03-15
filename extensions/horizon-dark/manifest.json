@@ -1,0 +1,42 @@
+﻿{
+    "id":  "horizon-dark",
+    "name":  "Horizon Dark",
+    "displayName":  "Horizon Dark",
+    "description":  "Sunset-inspired dark tones with coral accents and clean text hierarchy.",
+    "author":  "Horizon Labs",
+    "version":  "1.4.3",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-adjust",
+    "rating":  4.7,
+    "downloads":  860000,
+    "tags":  [
+                 "dark",
+                 "warm",
+                 "horizon",
+                 "evening",
+                 "aesthetic"
+             ],
+    "colors":  [
+                   "#1C1E26",
+                   "#E95678",
+                   "#FAB795",
+                   "#29D398",
+                   "#F09383",
+                   "#F43E5C"
+               ],
+    "preview":  {
+                    "background":  "#1C1E26",
+                    "accent":  "#E95678",
+                    "secondary":  "#FAB795",
+                    "palette":  [
+                                    "#1C1E26",
+                                    "#E95678",
+                                    "#FAB795",
+                                    "#29D398",
+                                    "#F09383",
+                                    "#F43E5C"
+                                ]
+                }
+}

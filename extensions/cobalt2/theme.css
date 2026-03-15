@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Cobalt 2
+   Electric blues and golden accents in a classic high-energy coding palette.
+   Author: Wes Bos
+   ============================================ */
+:root {
+  --bg-primary: #193549;
+  --bg-secondary: #142939;
+  --bg-tertiary: #30495B;
+  --bg-hover: #415868;
+  --text-primary: #DCE4EE;
+  --text-secondary: #7A8C9C;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #FFC600;
+  --accent-secondary: #FF9D00;
+  --accent-hover: #FFCF29;
+  --border-color: #4D5A4E;
+  --success: #3AD900;
+  --warning: #FFEE80;
+  --error: #FF628C;
+  --info: #FFB200;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(255, 198, 0, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

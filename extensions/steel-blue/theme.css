@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Steel Blue
+   Industrial blue-gray styling with polished highlights and clear hierarchy.
+   Author: Blue Alloy
+   ============================================ */
+:root {
+  --bg-primary: #1F2937;
+  --bg-secondary: #18202B;
+  --bg-tertiary: #353E4B;
+  --bg-hover: #454D59;
+  --text-primary: #DCE4EE;
+  --text-secondary: #7E8692;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #60A5FA;
+  --accent-secondary: #93C5FD;
+  --accent-hover: #79B3FB;
+  --border-color: #3B4C64;
+  --success: #34D399;
+  --warning: #FBBF24;
+  --error: #F87171;
+  --info: #7AB5FC;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(96, 165, 250, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

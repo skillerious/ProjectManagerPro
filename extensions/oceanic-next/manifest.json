@@ -1,0 +1,42 @@
+﻿{
+    "id":  "oceanic-next",
+    "name":  "Oceanic Next",
+    "displayName":  "Oceanic Next",
+    "description":  "Muted maritime hues with polished blues and precise readability.",
+    "author":  "Oceanic Contributors",
+    "version":  "1.7.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-wave-square",
+    "rating":  4.7,
+    "downloads":  940000,
+    "tags":  [
+                 "dark",
+                 "ocean",
+                 "cool",
+                 "muted",
+                 "professional"
+             ],
+    "colors":  [
+                   "#1B2B34",
+                   "#6699CC",
+                   "#C594C5",
+                   "#99C794",
+                   "#FAC863",
+                   "#EC5F67"
+               ],
+    "preview":  {
+                    "background":  "#1B2B34",
+                    "accent":  "#6699CC",
+                    "secondary":  "#C594C5",
+                    "palette":  [
+                                    "#1B2B34",
+                                    "#6699CC",
+                                    "#C594C5",
+                                    "#99C794",
+                                    "#FAC863",
+                                    "#EC5F67"
+                                ]
+                }
+}

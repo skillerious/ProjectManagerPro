@@ -1,0 +1,42 @@
+﻿{
+    "id":  "forest-night",
+    "name":  "Forest Night",
+    "displayName":  "Forest Night",
+    "description":  "Woodland-inspired dark surfaces with mossy greens and earthy warmth.",
+    "author":  "Evergreen Forge",
+    "version":  "1.1.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-tree",
+    "rating":  4.6,
+    "downloads":  540000,
+    "tags":  [
+                 "dark",
+                 "green",
+                 "forest",
+                 "natural",
+                 "cozy"
+             ],
+    "colors":  [
+                   "#1F2A1F",
+                   "#7FBBB3",
+                   "#83C092",
+                   "#A7C080",
+                   "#DBBC7F",
+                   "#E67E80"
+               ],
+    "preview":  {
+                    "background":  "#1F2A1F",
+                    "accent":  "#7FBBB3",
+                    "secondary":  "#83C092",
+                    "palette":  [
+                                    "#1F2A1F",
+                                    "#7FBBB3",
+                                    "#83C092",
+                                    "#A7C080",
+                                    "#DBBC7F",
+                                    "#E67E80"
+                                ]
+                }
+}

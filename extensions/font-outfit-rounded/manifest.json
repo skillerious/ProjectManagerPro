@@ -1,0 +1,42 @@
+﻿{
+    "id":  "font-outfit-rounded",
+    "name":  "Outfit Rounded",
+    "displayName":  "Outfit Rounded",
+    "description":  "Friendly dark interface with Outfit-like rounded geometry and smooth text rhythm.",
+    "author":  "Typography Studio",
+    "version":  "1.0.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-circle",
+    "rating":  4.5,
+    "downloads":  220000,
+    "tags":  [
+                 "dark",
+                 "fonts",
+                 "outfit",
+                 "rounded",
+                 "friendly"
+             ],
+    "colors":  [
+                   "#1A202C",
+                   "#63B3ED",
+                   "#B794F4",
+                   "#68D391",
+                   "#F6E05E",
+                   "#FC8181"
+               ],
+    "preview":  {
+                    "background":  "#1A202C",
+                    "accent":  "#63B3ED",
+                    "secondary":  "#B794F4",
+                    "palette":  [
+                                    "#1A202C",
+                                    "#63B3ED",
+                                    "#B794F4",
+                                    "#68D391",
+                                    "#F6E05E",
+                                    "#FC8181"
+                                ]
+                }
+}

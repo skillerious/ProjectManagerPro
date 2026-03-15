@@ -1,0 +1,42 @@
+﻿{
+    "id":  "sunset-horizon",
+    "name":  "Sunset Horizon",
+    "displayName":  "Sunset Horizon",
+    "description":  "Evening horizon tones with amber gradients and gentle warm contrast.",
+    "author":  "Horizon Atelier",
+    "version":  "1.0.6",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-sun",
+    "rating":  4.6,
+    "downloads":  330000,
+    "tags":  [
+                 "dark",
+                 "sunset",
+                 "amber",
+                 "warm",
+                 "evening"
+             ],
+    "colors":  [
+                   "#2B1D1A",
+                   "#FF8F00",
+                   "#FFB74D",
+                   "#8BC34A",
+                   "#FFD180",
+                   "#FF5252"
+               ],
+    "preview":  {
+                    "background":  "#2B1D1A",
+                    "accent":  "#FF8F00",
+                    "secondary":  "#FFB74D",
+                    "palette":  [
+                                    "#2B1D1A",
+                                    "#FF8F00",
+                                    "#FFB74D",
+                                    "#8BC34A",
+                                    "#FFD180",
+                                    "#FF5252"
+                                ]
+                }
+}

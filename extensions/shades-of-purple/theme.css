@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Shades of Purple
+   Deep violet foundations with punchy oranges and elegant bright syntax tones.
+   Author: Ahmad Awais
+   ============================================ */
+:root {
+  --bg-primary: #2D2B55;
+  --bg-secondary: #232242;
+  --bg-tertiary: #424066;
+  --bg-hover: #514F72;
+  --text-primary: #DCE4EE;
+  --text-secondary: #8488A2;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #A599E9;
+  --accent-secondary: #FF9D00;
+  --accent-hover: #B3A9ED;
+  --border-color: #504C78;
+  --success: #A5FF90;
+  --warning: #FFE700;
+  --error: #FF628C;
+  --info: #D29B74;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(165, 153, 233, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

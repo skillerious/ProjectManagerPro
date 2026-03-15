@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Dark Plus
+   The familiar baseline dark editor look with reliable contrast and clarity.
+   Author: Microsoft
+   ============================================ */
+:root {
+  --bg-primary: #1E1E1E;
+  --bg-secondary: #171717;
+  --bg-tertiary: #343434;
+  --bg-hover: #444444;
+  --text-primary: #DCE4EE;
+  --text-secondary: #7D8186;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #569CD6;
+  --accent-secondary: #C586C0;
+  --accent-hover: #71ACDD;
+  --border-color: #39434B;
+  --success: #6A9955;
+  --warning: #DCDCAA;
+  --error: #F44747;
+  --info: #8E91CB;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(86, 156, 214, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

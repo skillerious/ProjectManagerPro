@@ -1,0 +1,42 @@
+﻿{
+    "id":  "dark-plus",
+    "name":  "Dark Plus",
+    "displayName":  "Dark Plus",
+    "description":  "The familiar baseline dark editor look with reliable contrast and clarity.",
+    "author":  "Microsoft",
+    "version":  "1.0.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-code",
+    "rating":  4.7,
+    "downloads":  3200000,
+    "tags":  [
+                 "dark",
+                 "classic",
+                 "balanced",
+                 "microsoft",
+                 "editor"
+             ],
+    "colors":  [
+                   "#1E1E1E",
+                   "#569CD6",
+                   "#C586C0",
+                   "#6A9955",
+                   "#DCDCAA",
+                   "#F44747"
+               ],
+    "preview":  {
+                    "background":  "#1E1E1E",
+                    "accent":  "#569CD6",
+                    "secondary":  "#C586C0",
+                    "palette":  [
+                                    "#1E1E1E",
+                                    "#569CD6",
+                                    "#C586C0",
+                                    "#6A9955",
+                                    "#DCDCAA",
+                                    "#F44747"
+                                ]
+                }
+}

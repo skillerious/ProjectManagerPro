@@ -1,0 +1,42 @@
+﻿{
+    "id":  "ruby-night",
+    "name":  "Ruby Night",
+    "displayName":  "Ruby Night",
+    "description":  "Dark ruby ambience with rose accents and vivid highlights for key actions.",
+    "author":  "Ruby Collective",
+    "version":  "1.1.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-gem",
+    "rating":  4.7,
+    "downloads":  510000,
+    "tags":  [
+                 "dark",
+                 "ruby",
+                 "pink",
+                 "night",
+                 "vibrant"
+             ],
+    "colors":  [
+                   "#21121A",
+                   "#EF476F",
+                   "#F78C6B",
+                   "#7BD389",
+                   "#FFD166",
+                   "#FF5D8F"
+               ],
+    "preview":  {
+                    "background":  "#21121A",
+                    "accent":  "#EF476F",
+                    "secondary":  "#F78C6B",
+                    "palette":  [
+                                    "#21121A",
+                                    "#EF476F",
+                                    "#F78C6B",
+                                    "#7BD389",
+                                    "#FFD166",
+                                    "#FF5D8F"
+                                ]
+                }
+}

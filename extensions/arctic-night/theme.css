@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Arctic Night
+   Cold northern tones with frosted accents and a steady visual rhythm.
+   Author: Nordic Labs
+   ============================================ */
+:root {
+  --bg-primary: #2E3440;
+  --bg-secondary: #242932;
+  --bg-tertiary: #434853;
+  --bg-hover: #525761;
+  --text-primary: #DCE4EE;
+  --text-secondary: #858C97;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #88C0D0;
+  --accent-secondary: #81A1C1;
+  --accent-hover: #9BCAD8;
+  --border-color: #4D5964;
+  --success: #A3BE8C;
+  --warning: #EBCB8B;
+  --error: #BF616A;
+  --info: #84B0C8;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(136, 192, 208, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

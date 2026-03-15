@@ -1,0 +1,42 @@
+﻿{
+    "id":  "font-work-sans",
+    "name":  "Work Sans Studio",
+    "displayName":  "Work Sans Studio",
+    "description":  "A practical dark theme using Work Sans-inspired spacing for productive UI layouts.",
+    "author":  "Typography Studio",
+    "version":  "1.0.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-briefcase",
+    "rating":  4.5,
+    "downloads":  240000,
+    "tags":  [
+                 "dark",
+                 "fonts",
+                 "work-sans",
+                 "clean",
+                 "business"
+             ],
+    "colors":  [
+                   "#1E2533",
+                   "#7AA2F7",
+                   "#BB9AF7",
+                   "#9ECE6A",
+                   "#E0AF68",
+                   "#F7768E"
+               ],
+    "preview":  {
+                    "background":  "#1E2533",
+                    "accent":  "#7AA2F7",
+                    "secondary":  "#BB9AF7",
+                    "palette":  [
+                                    "#1E2533",
+                                    "#7AA2F7",
+                                    "#BB9AF7",
+                                    "#9ECE6A",
+                                    "#E0AF68",
+                                    "#F7768E"
+                                ]
+                }
+}

@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Night Owl
+   A midnight blue theme with luminous accents designed for long coding sessions.
+   Author: Night Owl Studio
+   ============================================ */
+:root {
+  --bg-primary: #011627;
+  --bg-secondary: #01111E;
+  --bg-tertiary: #1A2D3D;
+  --bg-hover: #2C3E4D;
+  --text-primary: #DCE4EE;
+  --text-secondary: #6E7D8A;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #82AAFF;
+  --accent-secondary: #C792EA;
+  --accent-hover: #96B8FF;
+  --border-color: #293E58;
+  --success: #22DA6E;
+  --warning: #ECC48D;
+  --error: #EF5350;
+  --info: #A49EF4;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(130, 170, 255, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

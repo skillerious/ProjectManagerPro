@@ -1,0 +1,42 @@
+﻿{
+    "id":  "cyberpunk-neon",
+    "name":  "Cyberpunk Neon",
+    "displayName":  "Cyberpunk Neon",
+    "description":  "Neon cyan and magenta over deep violet for a futuristic terminal city vibe.",
+    "author":  "Neon District",
+    "version":  "1.4.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-bolt",
+    "rating":  4.8,
+    "downloads":  820000,
+    "tags":  [
+                 "dark",
+                 "cyberpunk",
+                 "neon",
+                 "futuristic",
+                 "vivid"
+             ],
+    "colors":  [
+                   "#140F1F",
+                   "#00F5FF",
+                   "#FF2E88",
+                   "#39FF14",
+                   "#FFE66D",
+                   "#FF1744"
+               ],
+    "preview":  {
+                    "background":  "#140F1F",
+                    "accent":  "#00F5FF",
+                    "secondary":  "#FF2E88",
+                    "palette":  [
+                                    "#140F1F",
+                                    "#00F5FF",
+                                    "#FF2E88",
+                                    "#39FF14",
+                                    "#FFE66D",
+                                    "#FF1744"
+                                ]
+                }
+}

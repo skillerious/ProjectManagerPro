@@ -1,0 +1,42 @@
+﻿{
+    "id":  "moonlight-ii",
+    "name":  "Moonlight II",
+    "displayName":  "Moonlight II",
+    "description":  "A soft indigo palette with moonlit contrast and smooth readability.",
+    "author":  "Moonlight Themes",
+    "version":  "1.6.1",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-cloud",
+    "rating":  4.8,
+    "downloads":  980000,
+    "tags":  [
+                 "dark",
+                 "indigo",
+                 "moonlight",
+                 "calm",
+                 "developer"
+             ],
+    "colors":  [
+                   "#222436",
+                   "#82AAFF",
+                   "#C099FF",
+                   "#C3E88D",
+                   "#FF966C",
+                   "#FF757F"
+               ],
+    "preview":  {
+                    "background":  "#222436",
+                    "accent":  "#82AAFF",
+                    "secondary":  "#C099FF",
+                    "palette":  [
+                                    "#222436",
+                                    "#82AAFF",
+                                    "#C099FF",
+                                    "#C3E88D",
+                                    "#FF966C",
+                                    "#FF757F"
+                                ]
+                }
+}

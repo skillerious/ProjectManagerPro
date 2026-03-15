@@ -1,0 +1,42 @@
+﻿{
+    "id":  "ember-midnight",
+    "name":  "Ember Midnight",
+    "displayName":  "Ember Midnight",
+    "description":  "Charcoal midnight tones lit by ember oranges and balanced accent colors.",
+    "author":  "Ember Collective",
+    "version":  "1.0.8",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-fire",
+    "rating":  4.6,
+    "downloads":  390000,
+    "tags":  [
+                 "dark",
+                 "ember",
+                 "warm",
+                 "orange",
+                 "night"
+             ],
+    "colors":  [
+                   "#1A1412",
+                   "#FF8A65",
+                   "#FFB74D",
+                   "#81C784",
+                   "#FFD180",
+                   "#FF5252"
+               ],
+    "preview":  {
+                    "background":  "#1A1412",
+                    "accent":  "#FF8A65",
+                    "secondary":  "#FFB74D",
+                    "palette":  [
+                                    "#1A1412",
+                                    "#FF8A65",
+                                    "#FFB74D",
+                                    "#81C784",
+                                    "#FFD180",
+                                    "#FF5252"
+                                ]
+                }
+}

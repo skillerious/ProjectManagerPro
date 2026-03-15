@@ -1,0 +1,42 @@
+﻿{
+    "id":  "shades-of-purple",
+    "name":  "Shades of Purple",
+    "displayName":  "Shades of Purple",
+    "description":  "Deep violet foundations with punchy oranges and elegant bright syntax tones.",
+    "author":  "Ahmad Awais",
+    "version":  "1.9.0",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-gem",
+    "rating":  4.8,
+    "downloads":  1680000,
+    "tags":  [
+                 "dark",
+                 "purple",
+                 "vibrant",
+                 "neon",
+                 "popular"
+             ],
+    "colors":  [
+                   "#2D2B55",
+                   "#A599E9",
+                   "#FF9D00",
+                   "#A5FF90",
+                   "#FFE700",
+                   "#FF628C"
+               ],
+    "preview":  {
+                    "background":  "#2D2B55",
+                    "accent":  "#A599E9",
+                    "secondary":  "#FF9D00",
+                    "palette":  [
+                                    "#2D2B55",
+                                    "#A599E9",
+                                    "#FF9D00",
+                                    "#A5FF90",
+                                    "#FFE700",
+                                    "#FF628C"
+                                ]
+                }
+}

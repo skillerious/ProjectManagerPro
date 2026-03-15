@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Material Oceanic
+   Oceanic depth with material-inspired contrast and crisp cyan highlights.
+   Author: Material Collective
+   ============================================ */
+:root {
+  --bg-primary: #263238;
+  --bg-secondary: #1E272C;
+  --bg-tertiary: #3C464C;
+  --bg-hover: #4C555A;
+  --text-primary: #DCE4EE;
+  --text-secondary: #818B93;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #00ACC1;
+  --accent-secondary: #80CBC4;
+  --accent-hover: #29B9CB;
+  --border-color: #34545C;
+  --success: #C3E88D;
+  --warning: #FFCB6B;
+  --error: #F07178;
+  --info: #40BCC2;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(0, 172, 193, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

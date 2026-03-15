@@ -1,0 +1,42 @@
+﻿{
+    "id":  "lava-forge",
+    "name":  "Lava Forge",
+    "displayName":  "Lava Forge",
+    "description":  "Forged iron dark UI with molten orange accents and high visual energy.",
+    "author":  "Forge Themes",
+    "version":  "1.0.3",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-fire",
+    "rating":  4.6,
+    "downloads":  300000,
+    "tags":  [
+                 "dark",
+                 "lava",
+                 "orange",
+                 "forge",
+                 "bold"
+             ],
+    "colors":  [
+                   "#1D1412",
+                   "#FF7043",
+                   "#FFAB40",
+                   "#8BC34A",
+                   "#FFD54F",
+                   "#FF5252"
+               ],
+    "preview":  {
+                    "background":  "#1D1412",
+                    "accent":  "#FF7043",
+                    "secondary":  "#FFAB40",
+                    "palette":  [
+                                    "#1D1412",
+                                    "#FF7043",
+                                    "#FFAB40",
+                                    "#8BC34A",
+                                    "#FFD54F",
+                                    "#FF5252"
+                                ]
+                }
+}

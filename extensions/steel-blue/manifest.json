@@ -1,0 +1,42 @@
+﻿{
+    "id":  "steel-blue",
+    "name":  "Steel Blue",
+    "displayName":  "Steel Blue",
+    "description":  "Industrial blue-gray styling with polished highlights and clear hierarchy.",
+    "author":  "Blue Alloy",
+    "version":  "1.1.2",
+    "category":  "themes",
+    "type":  "themes",
+    "main":  "theme.css",
+    "icon":  "fa-adjust",
+    "rating":  4.7,
+    "downloads":  460000,
+    "tags":  [
+                 "dark",
+                 "blue",
+                 "steel",
+                 "professional",
+                 "cool"
+             ],
+    "colors":  [
+                   "#1F2937",
+                   "#60A5FA",
+                   "#93C5FD",
+                   "#34D399",
+                   "#FBBF24",
+                   "#F87171"
+               ],
+    "preview":  {
+                    "background":  "#1F2937",
+                    "accent":  "#60A5FA",
+                    "secondary":  "#93C5FD",
+                    "palette":  [
+                                    "#1F2937",
+                                    "#60A5FA",
+                                    "#93C5FD",
+                                    "#34D399",
+                                    "#FBBF24",
+                                    "#F87171"
+                                ]
+                }
+}

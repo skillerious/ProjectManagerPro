@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Ember Midnight
+   Charcoal midnight tones lit by ember oranges and balanced accent colors.
+   Author: Ember Collective
+   ============================================ */
+:root {
+  --bg-primary: #1A1412;
+  --bg-secondary: #14100E;
+  --bg-tertiary: #312C2A;
+  --bg-hover: #413D3B;
+  --text-primary: #DCE4EE;
+  --text-secondary: #7B7C80;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #FF8A65;
+  --accent-secondary: #FFB74D;
+  --accent-hover: #FF9D7E;
+  --border-color: #4E3932;
+  --success: #81C784;
+  --warning: #FFD180;
+  --error: #FF5252;
+  --info: #FFA059;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(255, 138, 101, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}

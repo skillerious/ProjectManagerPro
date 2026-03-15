@@ -1,0 +1,47 @@
+﻿/* ============================================
+   Obsidian Ink
+   Deep obsidian panels paired with inky accents and strong UI separation.
+   Author: Ink Foundry
+   ============================================ */
+:root {
+  --bg-primary: #11131A;
+  --bg-secondary: #0D0F14;
+  --bg-tertiary: #292B31;
+  --bg-hover: #3A3C41;
+  --text-primary: #DCE4EE;
+  --text-secondary: #767C84;
+  --text-highlight: #FFFFFF;
+  --accent-primary: #64B5F6;
+  --accent-secondary: #BA68C8;
+  --accent-hover: #7DC1F7;
+  --border-color: #313E4D;
+  --success: #81C784;
+  --warning: #FFCA28;
+  --error: #E57373;
+  --info: #8F8EDF;
+}
+.sidebar { background: var(--bg-secondary); }
+.titlebar { background: var(--bg-secondary); }
+.project-card,
+.extension-card,
+.ext-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.project-card:hover,
+.ext-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 24px rgba(100, 181, 246, 0.18);
+}
+.btn-primary,
+.ext-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+.stat-card {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+.modal-content {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
