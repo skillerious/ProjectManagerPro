@@ -9,3 +9,13 @@ tmp/
 tmp_write_test.txt
 coverage/
 .nyc_output/
+
+# User-requested publish exclusions
+.claude/
+.github/
+keygen/
+standalone/
+.changelog.md
+package-lock.json
+readme.md
+README.md
