@@ -42,12 +42,15 @@ function initializeExtensions() {
             const content = document.getElementById(`ext-${tab.dataset.extTab}`);
             if (content) content.classList.add('active');
 
-            // Load themes tab content on first click
+            // Load tab content
             if (tab.dataset.extTab === 'themes') {
                 renderThemesTab();
             }
             if (tab.dataset.extTab === 'marketplace') {
                 renderMarketplaceTab();
+            }
+            if (tab.dataset.extTab === 'fonts') {
+                renderFontsTab();
             }
         });
     });
@@ -134,6 +137,13 @@ function initializeExtensions() {
     // Refresh
     document.getElementById('refresh-extensions')?.addEventListener('click', () => {
         refreshExtensions();
+    });
+
+    // Browse GitHub Repository extensions - context-aware based on active tab
+    document.getElementById('browse-repo-extensions')?.addEventListener('click', () => {
+        const activeTab = document.querySelector('.ext-tab.active');
+        const tabName = activeTab?.dataset?.extTab || 'installed';
+        fetchAndShowRepoExtensions({ tabContext: tabName });
     });
 
     // Detail panel close
@@ -418,7 +428,11 @@ async function installMarketplaceExtension(ext, btn) {
     const result = await ipcRenderer.invoke('install-extension', extensionData);
 
     if (result.success) {
-        if (btn) btn.innerHTML = '<i class="fas fa-check"></i> Installed';
+        if (btn) {
+            btn.disabled = true;
+            btn.classList.add('installed');
+            btn.innerHTML = '<i class="fas fa-check"></i> Installed';
+        }
         showNotification(`${ext.displayName || ext.name} installed`, 'success');
 
         // Reload extensions and refresh theme dropdowns
@@ -432,12 +446,14 @@ async function installMarketplaceExtension(ext, btn) {
 
         // Refresh the settings extensions panel if it exists
         renderSettingsExtensionsList();
+        return true;
     } else {
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-download"></i> Install';
         }
         showNotification(`Failed: ${result.error}`, 'error');
+        return false;
     }
 }
 
@@ -540,11 +556,14 @@ function renderThemesTab() {
     grid.innerHTML = allThemes.map((theme) => {
         const stars = renderStarRating(theme.rating);
         const isInstalled = installedIds.has(theme.id);
+        const palette = (theme.preview && Array.isArray(theme.preview.palette)) ? theme.preview.palette : [];
+        const bgColor = (theme.preview && theme.preview.background) ? theme.preview.background : '#1a1b26';
+        const accentColor = (theme.preview && theme.preview.accent) ? theme.preview.accent : '#7aa2f7';
         return `
             <div class="ext-theme-card" data-theme-id="${theme.id}">
-                <div class="ext-theme-preview" style="background: ${theme.preview.background};">
+                <div class="ext-theme-preview" style="background-color: ${bgColor}; background-image: linear-gradient(135deg, ${bgColor} 0%, ${accentColor}18 100%);">
                     <div class="ext-theme-palette">
-                        ${theme.preview.palette.map(c => `<div class="ext-theme-swatch" style="background:${c};"></div>`).join('')}
+                        ${palette.map(c => `<div class="ext-theme-swatch" style="background-color: ${c} !important;"></div>`).join('')}
                     </div>
                 </div>
                 <div class="ext-theme-info">
@@ -552,7 +571,7 @@ function renderThemesTab() {
                     <p class="ext-theme-desc">${escapeHtml(theme.description)}</p>
                 </div>
                 <div class="ext-theme-tags">
-                    ${(theme.tags || []).slice(0, 3).map(t => `<span class="ext-theme-tag">${t}</span>`).join('')}
+                    ${(theme.tags || []).slice(0, 3).map(t => `<span class="ext-theme-tag">${escapeHtml(t)}</span>`).join('')}
                 </div>
                 <div class="ext-theme-footer">
                     <div class="ext-theme-stats">
@@ -571,39 +590,240 @@ function renderThemesTab() {
     grid.querySelectorAll('[data-theme-install]:not([disabled])').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            const themeId = e.currentTarget.dataset.themeInstall;
-            const source = e.currentTarget.dataset.themeSource;
+            const targetBtn = e.currentTarget;
+            const themeId = targetBtn.dataset.themeInstall;
+            const source = targetBtn.dataset.themeSource;
 
-            e.currentTarget.disabled = true;
-            e.currentTarget.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            targetBtn.disabled = true;
+            targetBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Installing...';
 
             let success = false;
-            if (source === 'marketplace') {
-                // Install via new flow (writes theme.css + manifest)
-                const ext = MARKETPLACE_EXTENSIONS.find(x => x.id === themeId);
-                if (ext) {
-                    await installMarketplaceExtension(ext, null);
-                    success = true;
+            try {
+                if (source === 'marketplace') {
+                    const ext = MARKETPLACE_EXTENSIONS.find(x => x.id === themeId);
+                    if (ext) {
+                        success = await installMarketplaceExtension(ext, null);
+                    }
+                } else {
+                    const theme = allThemes.find(t => t.id === themeId);
+                    if (theme) {
+                        success = await downloadMarketplaceTheme(theme);
+                    }
                 }
-            } else {
-                // Legacy flow
-                const theme = oldThemes.find(t => t.id === themeId);
-                if (theme) {
-                    success = await downloadMarketplaceTheme(theme);
-                }
+            } catch (err) {
+                success = false;
             }
 
             if (success) {
-                e.currentTarget.innerHTML = '<i class="fas fa-check"></i> Installed';
-                // Refresh the themes grid to update installed state
-                await loadThemeExtensions();
-                renderSettingsExtensionsList();
+                targetBtn.classList.add('installed');
+                targetBtn.innerHTML = '<i class="fas fa-check"></i> Installed';
+                targetBtn.disabled = true;
             } else {
-                e.currentTarget.disabled = false;
-                e.currentTarget.innerHTML = '<i class="fas fa-download"></i> Install';
+                targetBtn.disabled = false;
+                targetBtn.innerHTML = '<i class="fas fa-download"></i> Install';
             }
         });
     });
+}
+
+/* ========================================
+   Fonts Tab
+   ======================================== */
+
+const FONT_LIBRARY = [
+    // Monospace — Local
+    { id: 'consolas', name: 'Consolas', family: 'Consolas', type: 'monospace', source: 'local', sample: 'const x = 42;' },
+    { id: 'courier-new', name: 'Courier New', family: "'Courier New'", type: 'monospace', source: 'local', sample: 'function hello() {}' },
+    { id: 'monaco', name: 'Monaco', family: 'Monaco', type: 'monospace', source: 'local', sample: 'let result = true;' },
+    { id: 'cascadia-code', name: 'Cascadia Code', family: "'Cascadia Code'", type: 'monospace', source: 'local', sample: 'fn main() => {}' },
+    { id: 'cascadia-mono', name: 'Cascadia Mono', family: "'Cascadia Mono'", type: 'monospace', source: 'local', sample: 'import os, sys' },
+    { id: 'menlo', name: 'Menlo', family: 'Menlo', type: 'monospace', source: 'local', sample: 'class App extends' },
+    { id: 'sf-mono', name: 'SF Mono', family: "'SF Mono'", type: 'monospace', source: 'local', sample: 'type Props = {}' },
+    { id: 'lucida-console', name: 'Lucida Console', family: "'Lucida Console'", type: 'monospace', source: 'local', sample: 'SELECT * FROM' },
+    // Monospace — Web
+    { id: 'fira-code', name: 'Fira Code', family: "'Fira Code'", type: 'monospace', source: 'web', gfont: 'Fira+Code:wght@400;500;600;700', sample: 'const => !== !=' },
+    { id: 'jetbrains-mono', name: 'JetBrains Mono', family: "'JetBrains Mono'", type: 'monospace', source: 'web', gfont: 'JetBrains+Mono:wght@400;500;600;700', sample: 'fun main() {}' },
+    { id: 'source-code-pro', name: 'Source Code Pro', family: "'Source Code Pro'", type: 'monospace', source: 'web', gfont: 'Source+Code+Pro:wght@400;500;600;700', sample: 'git commit -m' },
+    { id: 'ibm-plex-mono', name: 'IBM Plex Mono', family: "'IBM Plex Mono'", type: 'monospace', source: 'web', gfont: 'IBM+Plex+Mono:wght@400;500;600;700', sample: 'npm install pkg' },
+    { id: 'ubuntu-mono', name: 'Ubuntu Mono', family: "'Ubuntu Mono'", type: 'monospace', source: 'web', gfont: 'Ubuntu+Mono:wght@400;700', sample: 'sudo apt update' },
+    { id: 'roboto-mono', name: 'Roboto Mono', family: "'Roboto Mono'", type: 'monospace', source: 'web', gfont: 'Roboto+Mono:wght@400;500;600;700', sample: 'docker run -it' },
+    { id: 'space-mono', name: 'Space Mono', family: "'Space Mono'", type: 'monospace', source: 'web', gfont: 'Space+Mono:wght@400;700', sample: 'export default' },
+    { id: 'inconsolata', name: 'Inconsolata', family: "'Inconsolata'", type: 'monospace', source: 'web', gfont: 'Inconsolata:wght@400;500;600;700', sample: 'while (true) {}' },
+    { id: 'victor-mono', name: 'Victor Mono', family: "'Victor Mono'", type: 'monospace', source: 'web', gfont: 'Victor+Mono:wght@400;500;600;700', sample: '// italic comments' },
+    { id: 'anonymous-pro', name: 'Anonymous Pro', family: "'Anonymous Pro'", type: 'monospace', source: 'web', gfont: 'Anonymous+Pro:wght@400;700', sample: 'cat ~/.bashrc' },
+    // Sans-Serif — Web
+    { id: 'inter', name: 'Inter', family: "'Inter'", type: 'sans-serif', source: 'web', gfont: 'Inter:wght@400;500;600;700', sample: 'The quick brown fox jumps' },
+    { id: 'plus-jakarta-sans', name: 'Plus Jakarta Sans', family: "'Plus Jakarta Sans'", type: 'sans-serif', source: 'web', gfont: 'Plus+Jakarta+Sans:wght@400;500;600;700', sample: 'Modern and elegant' },
+    { id: 'dm-sans', name: 'DM Sans', family: "'DM Sans'", type: 'sans-serif', source: 'web', gfont: 'DM+Sans:wght@400;500;600;700', sample: 'Clean geometric design' },
+    { id: 'outfit', name: 'Outfit', family: "'Outfit'", type: 'sans-serif', source: 'web', gfont: 'Outfit:wght@400;500;600;700', sample: 'Professional workspace' },
+    { id: 'space-grotesk', name: 'Space Grotesk', family: "'Space Grotesk'", type: 'sans-serif', source: 'web', gfont: 'Space+Grotesk:wght@400;500;600;700', sample: 'Futuristic and sharp' },
+    { id: 'manrope', name: 'Manrope', family: "'Manrope'", type: 'sans-serif', source: 'web', gfont: 'Manrope:wght@400;500;600;700', sample: 'Balanced proportions' },
+    { id: 'sora', name: 'Sora', family: "'Sora'", type: 'sans-serif', source: 'web', gfont: 'Sora:wght@400;500;600;700', sample: 'Geometric and friendly' },
+    { id: 'nunito', name: 'Nunito', family: "'Nunito'", type: 'sans-serif', source: 'web', gfont: 'Nunito:wght@400;500;600;700', sample: 'Soft and rounded edges' },
+    { id: 'poppins', name: 'Poppins', family: "'Poppins'", type: 'sans-serif', source: 'web', gfont: 'Poppins:wght@400;500;600;700', sample: 'Popular and versatile' },
+    { id: 'lexend', name: 'Lexend', family: "'Lexend'", type: 'sans-serif', source: 'web', gfont: 'Lexend:wght@400;500;600;700', sample: 'Designed for readability' },
+    { id: 'geist-sans', name: 'Geist Sans', family: "'Geist Sans'", type: 'sans-serif', source: 'web', gfont: 'Geist:wght@400;500;600;700', sample: 'Vercel design system' }
+];
+
+let fontsTabRendered = false;
+let fontsTabFilter = 'all';
+let fontsTabSearch = '';
+
+function renderFontsTab() {
+    const grid = document.getElementById('ext-fonts-grid');
+    if (!grid) return;
+
+    // Load web fonts that aren't loaded yet
+    FONT_LIBRARY.filter(f => f.source === 'web' && f.gfont).forEach(f => {
+        if (typeof loadGoogleFont === 'function') {
+            loadGoogleFont(f.gfont);
+        }
+    });
+
+    // Update current font display
+    const currentFontEl = document.getElementById('ext-fonts-current-value');
+    const currentFamily = appSettings?.fontFamily || 'system';
+    if (currentFontEl) {
+        if (!currentFamily || currentFamily === 'system') {
+            currentFontEl.textContent = 'System Default';
+        } else {
+            const match = FONT_LIBRARY.find(f => f.family === currentFamily);
+            currentFontEl.textContent = match ? match.name : currentFamily.replace(/'/g, '');
+        }
+    }
+
+    // Filter
+    let fonts = FONT_LIBRARY.slice();
+    if (fontsTabFilter === 'monospace') {
+        fonts = fonts.filter(f => f.type === 'monospace');
+    } else if (fontsTabFilter === 'sans-serif') {
+        fonts = fonts.filter(f => f.type === 'sans-serif');
+    } else if (fontsTabFilter === 'local') {
+        fonts = fonts.filter(f => f.source === 'local');
+    } else if (fontsTabFilter === 'web') {
+        fonts = fonts.filter(f => f.source === 'web');
+    }
+
+    if (fontsTabSearch) {
+        const q = fontsTabSearch.toLowerCase();
+        fonts = fonts.filter(f => f.name.toLowerCase().includes(q));
+    }
+
+    const currentValue = appSettings?.fontFamily || 'system';
+
+    if (fonts.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column:1/-1;text-align:center;padding:40px 20px;color:var(--text-secondary);">
+                <i class="fas fa-search" style="font-size:24px;opacity:0.4;margin-bottom:10px;display:block;"></i>
+                <p style="font-size:13px;margin:0;">No fonts match your search</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Add system default as first entry
+    const systemCard = `
+        <div class="ext-font-card${currentValue === 'system' || !currentValue ? ' active' : ''}" data-font-family="system" data-font-id="system">
+            <div class="ext-font-card-preview">
+                <div class="ext-font-card-sample" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+                    The quick brown fox jumps over the lazy dog
+                </div>
+            </div>
+            <div class="ext-font-card-info">
+                <span class="ext-font-card-name">System Default</span>
+                <div class="ext-font-card-meta">
+                    <span class="ext-font-card-type">System</span>
+                    <span class="ext-font-card-active-badge"><i class="fas fa-check-circle"></i> Active</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    grid.innerHTML = (fontsTabFilter === 'all' && !fontsTabSearch ? systemCard : '') + fonts.map(font => {
+        const isActive = currentValue === font.family;
+        return `
+            <div class="ext-font-card${isActive ? ' active' : ''}" data-font-family="${escapeHtml(font.family)}" data-font-id="${font.id}" ${font.gfont ? `data-gfont="${font.gfont}"` : ''}>
+                <div class="ext-font-card-preview">
+                    <div class="ext-font-card-sample" style="font-family: ${font.family}, monospace;">
+                        ${escapeHtml(font.sample)}
+                    </div>
+                </div>
+                <div class="ext-font-card-info">
+                    <span class="ext-font-card-name">${escapeHtml(font.name)}</span>
+                    <div class="ext-font-card-meta">
+                        <span class="ext-font-card-type${font.source === 'web' ? ' web' : ''}">${font.source === 'web' ? 'Web' : 'Local'}</span>
+                        <span class="ext-font-card-active-badge"><i class="fas fa-check-circle"></i> Active</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Click handlers
+    grid.querySelectorAll('.ext-font-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const family = card.dataset.fontFamily;
+            const gfont = card.dataset.gfont;
+
+            // Load web font if needed
+            if (gfont && typeof loadGoogleFont === 'function') {
+                loadGoogleFont(gfont);
+            }
+
+            // Apply font
+            if (typeof applyFontFamilySetting === 'function') {
+                applyFontFamilySetting(family);
+            }
+
+            // Update settings model
+            const fontSelect = document.getElementById('font-family');
+            if (fontSelect) {
+                fontSelect.value = family;
+                fontSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            // Update appSettings directly
+            if (appSettings) {
+                appSettings.fontFamily = family;
+            }
+
+            // Mark settings dirty
+            if (typeof setSettingsDirtyState === 'function') {
+                setSettingsDirtyState(true);
+            } else {
+                settingsDirty = true;
+            }
+
+            // Update active states
+            grid.querySelectorAll('.ext-font-card').forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+
+            // Update current font label
+            const label = card.querySelector('.ext-font-card-name')?.textContent || 'System Default';
+            if (currentFontEl) currentFontEl.textContent = label;
+
+            showNotification(`Font changed to ${label}`, 'success');
+        });
+    });
+
+    // Bind filter and search (only once)
+    if (!fontsTabRendered) {
+        fontsTabRendered = true;
+
+        document.querySelectorAll('.ext-fonts-filter').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.ext-fonts-filter').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                fontsTabFilter = btn.dataset.fontFilter;
+                renderFontsTab();
+            });
+        });
+
+        document.getElementById('ext-fonts-search')?.addEventListener('input', (e) => {
+            fontsTabSearch = e.target.value.trim();
+            renderFontsTab();
+        });
+    }
 }
 
 // Open extension detail panel
@@ -677,8 +897,8 @@ function openExtensionDetail(ext) {
             </button>
         `;
         document.getElementById('ext-detail-install-btn')?.addEventListener('click', async () => {
-            const btn = document.getElementById('ext-detail-install-btn');
-            await installMarketplaceExtension(ext, btn);
+            closeExtensionDetail();
+            await showExtensionInstallDialog(ext);
         });
     }
 
@@ -1751,6 +1971,1125 @@ async function installSampleThemesOld() {
 
 // Make function available globally for testing
 window.installSampleThemes = installSampleThemes;
+
+/* ========================================
+   Extension Download Smart Dialog
+   ======================================== */
+
+function getExtdlDialogElements() {
+    return {
+        overlay: document.getElementById('extdl-smart-overlay'),
+        shell: document.getElementById('extdl-smart-shell'),
+        closeBtn: document.getElementById('extdl-smart-close'),
+        iconEl: document.getElementById('extdl-smart-icon'),
+        titleEl: document.getElementById('extdl-smart-title'),
+        authorEl: document.getElementById('extdl-smart-author'),
+        descriptionEl: document.getElementById('extdl-smart-description'),
+        versionEl: document.getElementById('extdl-smart-version'),
+        ratingEl: document.getElementById('extdl-smart-rating'),
+        downloadsEl: document.getElementById('extdl-smart-downloads'),
+        categoryEl: document.getElementById('extdl-smart-category'),
+        previewWrap: document.getElementById('extdl-smart-preview-wrap'),
+        previewEl: document.getElementById('extdl-smart-preview'),
+        previewSidebar: document.getElementById('extdl-smart-preview-sidebar'),
+        previewEditor: document.getElementById('extdl-smart-preview-editor'),
+        paletteEl: document.getElementById('extdl-smart-palette'),
+        tagsWrap: document.getElementById('extdl-smart-tags-wrap'),
+        tagsEl: document.getElementById('extdl-smart-tags'),
+        progressWrap: document.getElementById('extdl-smart-progress-wrap'),
+        progressBar: document.getElementById('extdl-smart-progress-bar'),
+        progressLabel: document.getElementById('extdl-smart-progress-label'),
+        statusEl: document.getElementById('extdl-smart-status'),
+        statusText: document.getElementById('extdl-smart-status-text'),
+        actionsEl: document.getElementById('extdl-smart-actions')
+    };
+}
+
+function closeExtdlDialog(result = 'cancel') {
+    const { overlay } = getExtdlDialogElements();
+    const resolve = extdlDialogResolve;
+    extdlDialogResolve = null;
+
+    if (!overlay) {
+        if (typeof resolve === 'function') resolve(result);
+        return;
+    }
+
+    if (!overlay.classList.contains('active') && typeof resolve !== 'function') return;
+
+    if (extdlDialogKeyHandler) {
+        document.removeEventListener('keydown', extdlDialogKeyHandler, true);
+        extdlDialogKeyHandler = null;
+    }
+
+    if (extdlDialogMotionTimer) {
+        clearTimeout(extdlDialogMotionTimer);
+        extdlDialogMotionTimer = null;
+    }
+
+    overlay.onclick = null;
+    overlay.classList.remove('extdl-entering');
+    overlay.classList.add('extdl-closing');
+    overlay.setAttribute('aria-hidden', 'true');
+
+    extdlDialogMotionTimer = setTimeout(() => {
+        overlay.classList.remove(
+            'active', 'mode-info', 'mode-success', 'mode-danger', 'mode-progress',
+            'extdl-closing', 'extdl-entering'
+        );
+        overlay.dataset.context = '';
+        extdlDialogMotionTimer = null;
+    }, EXTDL_SMART_DIALOG_EXIT_MS);
+
+    if (typeof resolve === 'function') resolve(result);
+}
+
+function formatDownloadCount(count) {
+    if (!count || !Number.isFinite(count)) return '--';
+    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
+    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
+    return String(count);
+}
+
+function showExtdlDialog(ext, options = {}) {
+    const elements = getExtdlDialogElements();
+    const { overlay, shell, closeBtn, iconEl, titleEl, authorEl, descriptionEl,
+            versionEl, ratingEl, downloadsEl, categoryEl, previewWrap,
+            previewSidebar, previewEditor, paletteEl,
+            tagsWrap, tagsEl, progressWrap, progressBar, progressLabel,
+            statusEl, statusText, actionsEl } = elements;
+
+    if (!overlay || !shell) return Promise.resolve('cancel');
+
+    if (typeof extdlDialogResolve === 'function') {
+        closeExtdlDialog('cancel');
+    }
+
+    const mode = options.mode || 'info';
+    const actions = options.actions || [
+        { label: 'Install', value: 'install', variant: 'primary', icon: 'fa-download' },
+        { label: 'Cancel', value: 'cancel', variant: 'secondary' }
+    ];
+
+    if (extdlDialogMotionTimer) {
+        clearTimeout(extdlDialogMotionTimer);
+        extdlDialogMotionTimer = null;
+    }
+
+    // Reset state
+    overlay.classList.remove(
+        'active', 'mode-info', 'mode-success', 'mode-danger', 'mode-progress',
+        'extdl-entering', 'extdl-closing'
+    );
+    overlay.classList.add(`mode-${mode}`);
+    overlay.dataset.context = options.context || '';
+    overlay.setAttribute('aria-hidden', 'false');
+
+    // Icon
+    const isTheme = ext.category === 'themes' || ext.type === 'themes';
+    const iconClass = ext.icon ? `fas ${ext.icon}` : (isTheme ? 'fas fa-palette' : 'fas fa-puzzle-piece');
+    iconEl.innerHTML = options.iconHtml || `<i class="${iconClass}"></i>`;
+
+    // Header
+    titleEl.textContent = ext.displayName || ext.name || 'Extension';
+    authorEl.textContent = `by ${ext.author || ext.publisher || 'Unknown'}`;
+    descriptionEl.textContent = ext.description || '';
+
+    // Meta chips
+    versionEl.textContent = ext.version || '1.0.0';
+    ratingEl.textContent = ext.rating ? `${ext.rating} ★` : '--';
+    downloadsEl.textContent = formatDownloadCount(ext.downloads);
+    categoryEl.textContent = ext.category ? ext.category.charAt(0).toUpperCase() + ext.category.slice(1) : '--';
+
+    // Theme preview
+    const hasPreview = isTheme && ext.preview;
+    previewWrap.hidden = !hasPreview;
+    if (hasPreview) {
+        const bg = ext.preview.background || '#1a1b26';
+        const accent = ext.preview.accent || '#7aa2f7';
+        const secondary = ext.preview.secondary || '#565f89';
+        previewSidebar.style.background = `linear-gradient(180deg, ${accent}22, ${bg})`;
+        previewSidebar.style.borderRight = `1px solid ${accent}33`;
+        previewEditor.style.background = bg;
+        previewEditor.querySelectorAll('.extdl-smart-preview-line').forEach((line, i) => {
+            line.style.background = i % 2 === 0 ? accent + '55' : secondary + '44';
+        });
+
+        // Palette swatches
+        const palette = ext.preview.palette || ext.colors || [];
+        paletteEl.innerHTML = '';
+        palette.slice(0, 8).forEach((color) => {
+            const swatch = document.createElement('div');
+            swatch.className = 'extdl-smart-swatch';
+            swatch.style.background = color;
+            swatch.title = color;
+            paletteEl.appendChild(swatch);
+        });
+    }
+
+    // Tags
+    const tags = Array.isArray(ext.tags) ? ext.tags : [];
+    tagsWrap.hidden = tags.length === 0;
+    tagsEl.innerHTML = '';
+    tags.slice(0, 8).forEach((tag) => {
+        const el = document.createElement('span');
+        el.className = 'extdl-smart-tag';
+        el.textContent = tag;
+        tagsEl.appendChild(el);
+    });
+
+    // Progress
+    progressWrap.hidden = !options.showProgress;
+    if (options.showProgress) {
+        progressBar.style.width = '0%';
+        progressLabel.textContent = options.progressLabel || 'Preparing download...';
+    }
+
+    // Status
+    statusEl.hidden = true;
+
+    // Actions
+    actionsEl.innerHTML = '';
+    actionsEl.hidden = actions.length === 0;
+    actions.forEach((action, idx) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `extdl-smart-btn ${action.variant || 'secondary'}`;
+        button.style.setProperty('--extdl-btn-index', String(idx));
+        button.innerHTML = action.icon
+            ? `<i class="fas ${action.icon}"></i> ${escapeHtml(action.label)}`
+            : escapeHtml(action.label);
+        button.disabled = Boolean(action.disabled);
+        button.addEventListener('click', () => closeExtdlDialog(action.value));
+        actionsEl.appendChild(button);
+    });
+
+    // Close button
+    closeBtn.onclick = () => closeExtdlDialog('cancel');
+
+    // Escape key
+    extdlDialogKeyHandler = (e) => {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            closeExtdlDialog('cancel');
+        }
+    };
+    document.addEventListener('keydown', extdlDialogKeyHandler, true);
+
+    // Backdrop click
+    overlay.onclick = (e) => {
+        if (e.target === overlay) closeExtdlDialog('cancel');
+    };
+
+    // Animate in
+    overlay.classList.add('active');
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            overlay.classList.add('extdl-entering');
+        });
+    });
+
+    shell.focus();
+
+    return new Promise((resolve) => {
+        extdlDialogResolve = resolve;
+    });
+}
+
+function setExtdlProgress(percent, label) {
+    const { progressWrap, progressBar, progressLabel } = getExtdlDialogElements();
+    if (!progressWrap || !progressBar || !progressLabel) return;
+
+    progressWrap.hidden = false;
+    const clamped = Math.max(0, Math.min(100, Math.round(percent)));
+    progressBar.style.width = `${clamped}%`;
+    progressLabel.textContent = label || `Downloaded ${clamped}%`;
+}
+
+function setExtdlIndeterminate(label) {
+    const { progressWrap, progressBar, progressLabel } = getExtdlDialogElements();
+    if (!progressWrap || !progressBar || !progressLabel) return;
+
+    progressWrap.hidden = false;
+    progressWrap.classList.add('indeterminate');
+    progressBar.style.width = '42%';
+    progressLabel.textContent = label || 'Processing...';
+}
+
+function clearExtdlIndeterminate() {
+    const { progressWrap } = getExtdlDialogElements();
+    if (progressWrap) progressWrap.classList.remove('indeterminate');
+}
+
+function setExtdlStatus(message, isError = false) {
+    const { statusEl, statusText } = getExtdlDialogElements();
+    if (!statusEl || !statusText) return;
+
+    statusText.textContent = message;
+    statusEl.querySelector('i').className = isError ? 'fas fa-circle-xmark' : 'fas fa-circle-check';
+    // Re-trigger entrance animation by forcing reflow before unhiding
+    statusEl.style.animation = 'none';
+    statusEl.hidden = false;
+    void statusEl.offsetHeight;
+    statusEl.style.animation = '';
+}
+
+function setExtdlMode(mode) {
+    const { overlay } = getExtdlDialogElements();
+    if (!overlay) return;
+    overlay.classList.remove('mode-info', 'mode-success', 'mode-danger', 'mode-progress');
+    overlay.classList.add(`mode-${mode}`);
+}
+
+function setExtdlActions(actions) {
+    const { actionsEl } = getExtdlDialogElements();
+    if (!actionsEl) return;
+    actionsEl.innerHTML = '';
+    actionsEl.hidden = actions.length === 0;
+    actions.forEach((action, idx) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `extdl-smart-btn ${action.variant || 'secondary'}`;
+        button.style.setProperty('--extdl-btn-index', String(idx));
+        button.innerHTML = action.icon
+            ? `<i class="fas ${action.icon}"></i> ${escapeHtml(action.label)}`
+            : escapeHtml(action.label);
+        button.disabled = Boolean(action.disabled);
+        button.addEventListener('click', () => {
+            if (typeof action.onClick === 'function') {
+                action.onClick();
+            } else {
+                closeExtdlDialog(action.value);
+            }
+        });
+        actionsEl.appendChild(button);
+    });
+}
+
+async function showExtensionInstallDialog(ext) {
+    const isTheme = ext.category === 'themes' || ext.type === 'themes';
+    const isInstalled = installedExtensionsCache.some(e => e.id === ext.id);
+
+    if (isInstalled) {
+        const result = await showExtdlDialog(ext, {
+            mode: 'success',
+            context: 'already-installed',
+            actions: [
+                { label: 'Already Installed', value: 'done', variant: 'primary', icon: 'fa-check', disabled: true },
+                { label: 'Close', value: 'cancel', variant: 'secondary' }
+            ]
+        });
+        return;
+    }
+
+    const result = await showExtdlDialog(ext, {
+        mode: 'info',
+        context: 'confirm',
+        actions: [
+            { label: 'Install Extension', value: 'install', variant: 'primary', icon: 'fa-download' },
+            { label: 'Cancel', value: 'cancel', variant: 'secondary' }
+        ]
+    });
+
+    if (result !== 'install') return;
+
+    // Switch to progress mode
+    setExtdlMode('mode-progress');
+    setExtdlActions([]);
+    const { progressWrap } = getExtdlDialogElements();
+    if (progressWrap) progressWrap.hidden = false;
+    setExtdlIndeterminate(isTheme ? 'Installing theme...' : 'Installing extension...');
+
+    try {
+        const manifest = {
+            name: ext.id,
+            displayName: ext.displayName || ext.name,
+            version: ext.version || '1.0.0',
+            description: ext.description || '',
+            publisher: ext.author || 'GitHub',
+            category: ext.category || 'general',
+            rating: ext.rating,
+            downloads: ext.downloads,
+            icon: ext.icon || '',
+            tags: ext.tags || []
+        };
+
+        const files = {
+            'manifest.json': JSON.stringify(manifest, null, 2)
+        };
+
+        if (isTheme && ext.themeCSS) {
+            manifest.main = 'theme.css';
+            manifest.colors = ext.colors || ext.preview?.palette || [];
+            manifest.preview = ext.preview || {};
+            files['manifest.json'] = JSON.stringify(manifest, null, 2);
+            files['theme.css'] = ext.themeCSS;
+        }
+
+        if (ext.settings) {
+            manifest.settingsSchema = ext.settings;
+            files['manifest.json'] = JSON.stringify(manifest, null, 2);
+        }
+
+        const extensionData = {
+            id: ext.id,
+            name: ext.displayName || ext.name,
+            type: isTheme ? 'themes' : 'installed',
+            files
+        };
+
+        // Simulate progress stages for visual feedback
+        setExtdlProgress(20, 'Preparing files...');
+        await new Promise(r => setTimeout(r, 300));
+        setExtdlProgress(50, 'Writing extension data...');
+
+        const installResult = await ipcRenderer.invoke('install-extension', extensionData);
+
+        setExtdlProgress(80, 'Finalizing installation...');
+        await new Promise(r => setTimeout(r, 250));
+        clearExtdlIndeterminate();
+        setExtdlProgress(100, 'Complete!');
+
+        await new Promise(r => setTimeout(r, 350));
+
+        if (installResult.success) {
+            setExtdlMode('success');
+            const { progressWrap: pw } = getExtdlDialogElements();
+            if (pw) pw.hidden = true;
+            setExtdlStatus(`${ext.displayName || ext.name} installed successfully!`);
+            setExtdlActions([
+                { label: 'Done', value: 'done', variant: 'primary', icon: 'fa-check' }
+            ]);
+
+            markExtensionsCacheDirty();
+            await loadInstalledExtensions({ force: true });
+
+            if (isTheme) {
+                await loadThemeExtensions();
+            }
+        } else {
+            throw new Error(installResult.error || 'Installation failed');
+        }
+    } catch (err) {
+        clearExtdlIndeterminate();
+        const { progressWrap: pw } = getExtdlDialogElements();
+        if (pw) pw.hidden = true;
+        setExtdlMode('danger');
+        setExtdlStatus(err.message || 'Installation failed', true);
+        setExtdlActions([
+            { label: 'Close', value: 'cancel', variant: 'danger', icon: 'fa-times' }
+        ]);
+    }
+}
+
+// Tab context metadata for smart repository behavior
+const REPO_TAB_CONTEXTS = {
+    themes: {
+        label: 'Themes',
+        icon: 'fa-palette',
+        color: '#c084fc',
+        description: 'Download and install all theme extensions from the repository.',
+        filterFn: (ext) => ext.category === 'themes' || ext.type === 'themes',
+        singular: 'theme',
+        plural: 'themes'
+    },
+    fonts: {
+        label: 'Fonts',
+        icon: 'fa-font',
+        color: '#60a5fa',
+        description: 'Download and install all font extensions from the repository.',
+        filterFn: (ext) => ext.category === 'fonts' || ext.type === 'fonts',
+        singular: 'font',
+        plural: 'fonts'
+    },
+    marketplace: {
+        label: 'All Extensions',
+        icon: 'fa-store',
+        color: '#a78bfa',
+        description: 'Download and install all extensions from the repository.',
+        filterFn: () => true,
+        singular: 'extension',
+        plural: 'extensions'
+    },
+    installed: {
+        label: 'All Extensions',
+        icon: 'fa-cloud-arrow-down',
+        color: '#a78bfa',
+        description: 'Browse and install extensions from the GitHub repository.',
+        filterFn: () => true,
+        singular: 'extension',
+        plural: 'extensions'
+    },
+    categories: {
+        label: 'All Extensions',
+        icon: 'fa-th-large',
+        color: '#a78bfa',
+        description: 'Browse and install extensions from the GitHub repository.',
+        filterFn: () => true,
+        singular: 'extension',
+        plural: 'extensions'
+    }
+};
+
+function getActiveExtTabContext() {
+    const activeTab = document.querySelector('.ext-tab.active');
+    const tabName = activeTab?.dataset?.extTab || 'installed';
+    return REPO_TAB_CONTEXTS[tabName] || REPO_TAB_CONTEXTS.installed;
+}
+
+async function fetchAndShowRepoExtensions({ tabContext = 'installed' } = {}) {
+    if (repoExtensionsFetchInFlight) return;
+
+    const ctx = REPO_TAB_CONTEXTS[tabContext] || REPO_TAB_CONTEXTS.installed;
+    const isFiltered = tabContext === 'themes' || tabContext === 'fonts';
+
+    // Show smart confirmation dialog first
+    const confirmExt = {
+        id: '_repo_confirm',
+        displayName: `Repository ${ctx.label}`,
+        name: `Repository ${ctx.label}`,
+        description: ctx.description,
+        author: 'Project Manager Pro',
+        version: '--',
+        category: tabContext,
+        icon: ctx.icon
+    };
+
+    const confirmResult = await showExtdlDialog(confirmExt, {
+        mode: 'info',
+        context: 'repo-confirm',
+        actions: isFiltered
+            ? [
+                { label: `Download All ${ctx.label}`, value: 'download-filtered', variant: 'primary', icon: 'fa-download' },
+                { label: 'Browse All Extensions', value: 'browse-all', variant: 'secondary', icon: 'fa-store' },
+                { label: 'Cancel', value: 'cancel', variant: 'secondary' }
+            ]
+            : [
+                { label: 'Browse Repository', value: 'browse-all', variant: 'primary', icon: 'fa-store' },
+                { label: 'Cancel', value: 'cancel', variant: 'secondary' }
+            ]
+    });
+
+    if (confirmResult === 'cancel' || !confirmResult) return;
+
+    const wantFilteredBulk = confirmResult === 'download-filtered';
+    const wantBrowseAll = confirmResult === 'browse-all';
+
+    // Now fetch the extensions
+    repoExtensionsFetchInFlight = true;
+
+    const loadingExt = {
+        id: '_loading',
+        displayName: wantFilteredBulk ? `Downloading ${ctx.label}` : 'Loading Extensions',
+        name: wantFilteredBulk ? `Downloading ${ctx.label}` : 'Loading Extensions',
+        description: wantFilteredBulk
+            ? `Fetching ${ctx.plural} from GitHub repository...`
+            : 'Fetching available extensions from GitHub repository...',
+        author: 'Project Manager Pro',
+        version: '--',
+        category: tabContext,
+        icon: wantFilteredBulk ? ctx.icon : 'fa-cloud-arrow-down'
+    };
+
+    showExtdlDialog(loadingExt, {
+        mode: 'progress',
+        context: 'fetching',
+        showProgress: true,
+        progressLabel: 'Connecting to GitHub...',
+        actions: [
+            { label: 'Cancel', value: 'cancel', variant: 'secondary' }
+        ]
+    }).then((result) => {
+        if (result === 'cancel' && repoExtensionsFetchInFlight) {
+            repoExtensionsFetchInFlight = false;
+        }
+    });
+
+    setExtdlIndeterminate('Connecting to GitHub...');
+
+    // Listen for progress updates
+    const progressCleanup = ipcRenderer.on('extension-download-progress', (_ev, data) => {
+        if (!data) return;
+        clearExtdlIndeterminate();
+        const pct = Math.round((data.current / data.total) * 100);
+        setExtdlProgress(pct, `Fetching ${data.name}... (${data.current}/${data.total})`);
+    });
+
+    try {
+        const result = await ipcRenderer.invoke('fetch-repo-extensions');
+        progressCleanup();
+
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to fetch extensions');
+        }
+
+        repoExtensionsCache = result.extensions;
+        repoExtensionsFetchInFlight = false;
+
+        // Close the loading dialog
+        closeExtdlDialog('done');
+
+        if (wantFilteredBulk) {
+            // Filter to the relevant category and batch install
+            const filtered = result.extensions.filter(ctx.filterFn);
+            if (filtered.length === 0) {
+                await new Promise(r => setTimeout(r, 260));
+                showNotification(`No ${ctx.plural} found in the repository.`, 'warning');
+                return;
+            }
+            await new Promise(r => setTimeout(r, 260));
+            await installAllRepoExtensions(filtered, ctx);
+        } else if (wantBrowseAll) {
+            await new Promise(r => setTimeout(r, 260));
+            await showRepoExtensionsBrowser(result.extensions, tabContext);
+        }
+
+    } catch (err) {
+        progressCleanup();
+        repoExtensionsFetchInFlight = false;
+        clearExtdlIndeterminate();
+        const { progressWrap: pw } = getExtdlDialogElements();
+        if (pw) pw.hidden = true;
+        setExtdlMode('danger');
+        setExtdlStatus(err.message || 'Failed to fetch extensions', true);
+        setExtdlActions([
+            { label: 'Close', value: 'cancel', variant: 'danger', icon: 'fa-times' }
+        ]);
+    }
+}
+
+async function showRepoExtensionsBrowser(allExtensions, initialTabContext = 'installed') {
+    if (!allExtensions || allExtensions.length === 0) {
+        showNotification('No extensions found in repository', 'warning');
+        return;
+    }
+
+    const overlay = document.getElementById('extdl-smart-overlay');
+    const shell = document.getElementById('extdl-smart-shell');
+    if (!overlay || !shell) return;
+
+    if (extdlDialogMotionTimer) {
+        clearTimeout(extdlDialogMotionTimer);
+        extdlDialogMotionTimer = null;
+    }
+
+    overlay.classList.remove(
+        'active', 'mode-info', 'mode-success', 'mode-danger', 'mode-progress',
+        'extdl-entering', 'extdl-closing'
+    );
+    overlay.setAttribute('aria-hidden', 'false');
+
+    shell.innerHTML = '';
+    shell.style.maxHeight = '85vh';
+    shell.style.overflowY = 'hidden';
+    shell.style.width = 'min(720px, 94vw)';
+    shell.style.display = 'flex';
+    shell.style.flexDirection = 'column';
+
+    // Accent bar
+    const accent = document.createElement('div');
+    accent.className = 'extdl-smart-accent';
+    shell.appendChild(accent);
+
+    // Close button
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'extdl-smart-close';
+    closeBtn.type = 'button';
+    closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+    closeBtn.addEventListener('click', () => closeBrowserDialog());
+    shell.appendChild(closeBtn);
+
+    // ── Sticky header section ──
+    const headerSection = document.createElement('div');
+    headerSection.style.cssText = 'flex-shrink:0;padding:0 24px;';
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = 'padding-top:26px;text-align:center;';
+    header.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:6px;">
+            <div class="extdl-smart-icon-wrap" style="width:52px;height:52px;">
+                <div class="extdl-smart-icon-ring" style="opacity:1;transform:scale(1);"></div>
+                <div class="extdl-smart-icon" style="width:52px;height:52px;font-size:20px;opacity:1;transform:scale(1);">
+                    <i class="fas fa-store"></i>
+                </div>
+            </div>
+        </div>
+        <h3 style="font-size:22px;text-align:center;opacity:1;transform:none;">Extension Repository</h3>
+        <p id="extdl-browser-subtitle" style="color:#9b8ec2;font-size:13px;margin-top:4px;">
+            ${allExtensions.length} extensions available from GitHub
+        </p>
+    `;
+    headerSection.appendChild(header);
+
+    // Category filter chips
+    const categoryMap = new Map();
+    allExtensions.forEach(ext => {
+        const cat = ext.category || ext.type || 'general';
+        categoryMap.set(cat, (categoryMap.get(cat) || 0) + 1);
+    });
+
+    const filterRow = document.createElement('div');
+    filterRow.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin:10px 0 4px;';
+
+    const categoryChips = [
+        { key: 'all', label: 'All', icon: 'fa-layer-group', count: allExtensions.length },
+        ...[...categoryMap.entries()].map(([cat, count]) => ({
+            key: cat,
+            label: cat.charAt(0).toUpperCase() + cat.slice(1),
+            icon: cat === 'themes' ? 'fa-palette' : cat === 'fonts' ? 'fa-font' : 'fa-puzzle-piece',
+            count
+        }))
+    ];
+
+    // Determine initial active filter based on tab context
+    let activeFilter = (initialTabContext === 'themes' || initialTabContext === 'fonts') ? initialTabContext : 'all';
+
+    categoryChips.forEach(chip => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.filterKey = chip.key;
+        btn.style.cssText = `
+            padding:5px 12px;border-radius:16px;font-size:11px;font-weight:600;cursor:pointer;
+            border:1px solid rgba(139,92,246,0.2);background:rgba(20,16,40,0.6);color:#9b8ec2;
+            display:inline-flex;align-items:center;gap:5px;transition:all 0.18s ease;
+        `;
+        btn.innerHTML = `<i class="fas ${chip.icon}" style="font-size:10px;"></i> ${escapeHtml(chip.label)} <span style="opacity:0.6;font-size:10px;">${chip.count}</span>`;
+        btn.addEventListener('click', () => {
+            activeFilter = chip.key;
+            filterRow.querySelectorAll('button').forEach(b => {
+                b.style.background = 'rgba(20,16,40,0.6)';
+                b.style.borderColor = 'rgba(139,92,246,0.2)';
+                b.style.color = '#9b8ec2';
+            });
+            btn.style.background = 'rgba(139,92,246,0.2)';
+            btn.style.borderColor = 'rgba(139,92,246,0.5)';
+            btn.style.color = '#e9d5ff';
+            renderGrid(searchInput?.value || '');
+            updateBulkButton();
+        });
+        if (chip.key === activeFilter) {
+            btn.style.background = 'rgba(139,92,246,0.2)';
+            btn.style.borderColor = 'rgba(139,92,246,0.5)';
+            btn.style.color = '#e9d5ff';
+        }
+        filterRow.appendChild(btn);
+    });
+    headerSection.appendChild(filterRow);
+
+    // Search
+    const searchWrap = document.createElement('div');
+    searchWrap.style.cssText = 'margin:10px 0 8px;position:relative;';
+    searchWrap.innerHTML = `
+        <input type="text" id="extdl-browser-search" placeholder="Search extensions..."
+            style="width:100%;padding:9px 14px 9px 36px;background:rgba(20,16,40,0.8);border:1px solid rgba(139,92,246,0.2);border-radius:10px;color:#dbd4f0;font-size:13px;outline:none;box-sizing:border-box;" />
+        <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#6b6088;font-size:12px;"></i>
+    `;
+    headerSection.appendChild(searchWrap);
+
+    // Divider below header
+    const headerDivider = document.createElement('div');
+    headerDivider.style.cssText = 'height:1px;background:linear-gradient(90deg,transparent,rgba(139,92,246,0.2),transparent);margin-top:4px;';
+    headerSection.appendChild(headerDivider);
+
+    shell.appendChild(headerSection);
+
+    // ── Scrollable grid area ──
+    const scrollArea = document.createElement('div');
+    scrollArea.style.cssText = 'flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 24px 8px;scrollbar-width:thin;scrollbar-color:rgba(139,92,246,0.3) transparent;';
+
+    const grid = document.createElement('div');
+    grid.id = 'extdl-browser-grid';
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;';
+    scrollArea.appendChild(grid);
+
+    shell.appendChild(scrollArea);
+
+    // ── Sticky footer section ──
+    const footerDivider = document.createElement('div');
+    footerDivider.style.cssText = 'flex-shrink:0;height:1px;background:linear-gradient(90deg,transparent,rgba(139,92,246,0.2),transparent);margin:0 24px;';
+    shell.appendChild(footerDivider);
+
+    const bulkArea = document.createElement('div');
+    bulkArea.style.cssText = 'flex-shrink:0;padding:14px 24px 18px;display:flex;justify-content:center;gap:10px;';
+    bulkArea.innerHTML = `
+        <button class="extdl-smart-btn primary" id="extdl-install-all" style="opacity:1;transform:none;">
+            <i class="fas fa-download"></i> Install All
+        </button>
+        <button class="extdl-smart-btn" id="extdl-browser-close" style="opacity:1;transform:none;">
+            Close
+        </button>
+    `;
+    shell.appendChild(bulkArea);
+
+    function getFilteredExtensions() {
+        if (activeFilter === 'all') return allExtensions;
+        return allExtensions.filter(ext => {
+            const cat = ext.category || ext.type || 'general';
+            return cat === activeFilter;
+        });
+    }
+
+    function updateBulkButton() {
+        const installBtn = document.getElementById('extdl-install-all');
+        if (!installBtn) return;
+        const filtered = getFilteredExtensions();
+        const notInstalled = filtered.filter(ext => !installedExtensionsCache.some(e => e.id === ext.id));
+        if (activeFilter === 'all') {
+            installBtn.innerHTML = `<i class="fas fa-download"></i> Install All (${notInstalled.length})`;
+        } else {
+            const label = activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1);
+            installBtn.innerHTML = `<i class="fas fa-download"></i> Install All ${escapeHtml(label)} (${notInstalled.length})`;
+        }
+        installBtn.disabled = notInstalled.length === 0;
+        installBtn.style.opacity = notInstalled.length === 0 ? '0.5' : '1';
+    }
+
+    function renderGrid(filter = '') {
+        grid.innerHTML = '';
+        let extensions = getFilteredExtensions();
+        const q = filter.toLowerCase().trim();
+        if (q) {
+            extensions = extensions.filter(e =>
+                (e.displayName || e.name || '').toLowerCase().includes(q) ||
+                (e.description || '').toLowerCase().includes(q) ||
+                (e.tags || []).some(t => t.toLowerCase().includes(q)));
+        }
+
+        // Update subtitle
+        const subtitleEl = document.getElementById('extdl-browser-subtitle');
+        if (subtitleEl) {
+            subtitleEl.textContent = activeFilter === 'all'
+                ? `${extensions.length} extensions available from GitHub`
+                : `${extensions.length} ${activeFilter} available from GitHub`;
+        }
+
+        if (extensions.length === 0) {
+            grid.innerHTML = '<p style="color:#6b6088;grid-column:1/-1;text-align:center;padding:20px;font-size:13px;">No extensions match your search</p>';
+            return;
+        }
+
+        extensions.forEach((ext) => {
+            const isInstalled = installedExtensionsCache.some(e => e.id === ext.id);
+            const isTheme = ext.category === 'themes' || ext.type === 'themes';
+            const bg = ext.preview?.background || '#1a1b26';
+            const accentColor = ext.preview?.accent || '#8b5cf6';
+
+            const card = document.createElement('div');
+            card.style.cssText = `
+                border-radius:12px;
+                border:1px solid rgba(139,92,246,0.18);
+                background:rgba(20,16,40,0.7);
+                overflow:hidden;
+                cursor:pointer;
+                transition:transform 0.18s ease,border-color 0.18s ease,box-shadow 0.18s ease;
+            `;
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-2px)';
+                card.style.borderColor = 'rgba(139,92,246,0.4)';
+                card.style.boxShadow = '0 8px 24px rgba(139,92,246,0.15)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = '';
+                card.style.borderColor = '';
+                card.style.boxShadow = '';
+            });
+
+            // Theme color strip
+            const strip = document.createElement('div');
+            strip.style.cssText = `height:4px;background:linear-gradient(90deg,${accentColor},${bg});`;
+            card.appendChild(strip);
+
+            // Preview mini
+            if (isTheme && ext.preview) {
+                const mini = document.createElement('div');
+                mini.style.cssText = `height:48px;background:${bg};display:flex;padding:8px 12px;gap:6px;align-items:center;`;
+                const palette = ext.preview.palette || ext.colors || [];
+                palette.slice(0, 5).forEach((c) => {
+                    const dot = document.createElement('div');
+                    dot.style.cssText = `width:12px;height:12px;border-radius:50%;background:${c};flex-shrink:0;`;
+                    mini.appendChild(dot);
+                });
+                card.appendChild(mini);
+            }
+
+            // Info area
+            const info = document.createElement('div');
+            info.style.cssText = 'padding:10px 12px 12px;';
+            const iconCls = ext.icon ? `fas ${ext.icon}` : (isTheme ? 'fas fa-palette' : 'fas fa-puzzle-piece');
+            info.innerHTML = `
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                    <i class="${iconCls}" style="color:${accentColor};font-size:13px;opacity:0.8;"></i>
+                    <span style="font-size:13px;font-weight:600;color:#e8e0ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(ext.displayName || ext.name)}</span>
+                </div>
+                <p style="font-size:11px;color:#8a7eac;margin:0;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(ext.description || '')}</p>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+                    <span style="font-size:10px;color:#6b6088;">v${escapeHtml(ext.version || '1.0')}</span>
+                    ${ext.rating ? `<span style="font-size:10px;color:#c4b5fd;">${ext.rating} ★</span>` : ''}
+                    ${isInstalled ? '<span style="font-size:10px;color:#86efac;font-weight:600;"><i class="fas fa-check" style="font-size:9px;"></i> Installed</span>' : ''}
+                </div>
+            `;
+            card.appendChild(info);
+
+            card.addEventListener('click', async () => {
+                closeBrowserDialog();
+                await new Promise(r => setTimeout(r, 260));
+                await showExtensionInstallDialog(ext);
+                // Re-open browser after install dialog closes
+                await new Promise(r => setTimeout(r, 260));
+                await showRepoExtensionsBrowser(allExtensions, initialTabContext);
+            });
+
+            grid.appendChild(card);
+        });
+    }
+
+    renderGrid();
+    updateBulkButton();
+
+    // Search handler
+    const searchInput = document.getElementById('extdl-browser-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', () => renderGrid(searchInput.value));
+    }
+
+    // Install All (respects active filter)
+    document.getElementById('extdl-install-all')?.addEventListener('click', async () => {
+        const filtered = getFilteredExtensions();
+        const ctx = activeFilter !== 'all' && REPO_TAB_CONTEXTS[activeFilter]
+            ? REPO_TAB_CONTEXTS[activeFilter]
+            : null;
+        closeBrowserDialog();
+        await new Promise(r => setTimeout(r, 260));
+        await installAllRepoExtensions(filtered, ctx);
+    });
+
+    // Close
+    document.getElementById('extdl-browser-close')?.addEventListener('click', () => closeBrowserDialog());
+
+    // Escape key
+    extdlDialogKeyHandler = (e) => {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            closeBrowserDialog();
+        }
+    };
+    document.addEventListener('keydown', extdlDialogKeyHandler, true);
+
+    overlay.onclick = (e) => {
+        if (e.target === overlay) closeBrowserDialog();
+    };
+
+    overlay.classList.add('active');
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            overlay.classList.add('extdl-entering');
+        });
+    });
+
+    function closeBrowserDialog() {
+        if (extdlDialogKeyHandler) {
+            document.removeEventListener('keydown', extdlDialogKeyHandler, true);
+            extdlDialogKeyHandler = null;
+        }
+        overlay.onclick = null;
+        overlay.classList.remove('extdl-entering');
+        overlay.classList.add('extdl-closing');
+        overlay.setAttribute('aria-hidden', 'true');
+
+        setTimeout(() => {
+            overlay.classList.remove('active', 'extdl-closing', 'extdl-entering',
+                'mode-info', 'mode-success', 'mode-danger', 'mode-progress');
+            shell.style.maxHeight = '';
+            shell.style.overflowY = '';
+            shell.style.width = '';
+            shell.style.display = '';
+            shell.style.flexDirection = '';
+            shell.innerHTML = buildOriginalExtdlShellHtml();
+        }, EXTDL_SMART_DIALOG_EXIT_MS);
+    }
+}
+
+function buildOriginalExtdlShellHtml() {
+    return `
+        <div class="extdl-smart-accent"></div>
+        <button class="extdl-smart-close" id="extdl-smart-close" type="button" aria-label="Close extension dialog">
+            <i class="fas fa-times"></i>
+        </button>
+        <div class="extdl-smart-header">
+            <div class="extdl-smart-icon-wrap">
+                <div class="extdl-smart-icon-ring"></div>
+                <div class="extdl-smart-icon" id="extdl-smart-icon">
+                    <i class="fas fa-puzzle-piece"></i>
+                </div>
+            </div>
+            <div class="extdl-smart-header-text">
+                <h3 id="extdl-smart-title">Extension Name</h3>
+                <p class="extdl-smart-author" id="extdl-smart-author">by Author</p>
+            </div>
+        </div>
+        <p id="extdl-smart-description" class="extdl-smart-description">Extension description goes here.</p>
+        <div class="extdl-smart-meta">
+            <div class="extdl-smart-chip">
+                <span class="extdl-smart-chip-icon"><i class="fas fa-code-branch"></i></span>
+                <span class="extdl-smart-chip-label">Version</span>
+                <span class="extdl-smart-chip-value" id="extdl-smart-version">1.0.0</span>
+            </div>
+            <div class="extdl-smart-chip">
+                <span class="extdl-smart-chip-icon"><i class="fas fa-star"></i></span>
+                <span class="extdl-smart-chip-label">Rating</span>
+                <span class="extdl-smart-chip-value" id="extdl-smart-rating">--</span>
+            </div>
+            <div class="extdl-smart-chip">
+                <span class="extdl-smart-chip-icon"><i class="fas fa-download"></i></span>
+                <span class="extdl-smart-chip-label">Downloads</span>
+                <span class="extdl-smart-chip-value" id="extdl-smart-downloads">--</span>
+            </div>
+            <div class="extdl-smart-chip">
+                <span class="extdl-smart-chip-icon"><i class="fas fa-layer-group"></i></span>
+                <span class="extdl-smart-chip-label">Category</span>
+                <span class="extdl-smart-chip-value" id="extdl-smart-category">--</span>
+            </div>
+        </div>
+        <div class="extdl-smart-preview-wrap" id="extdl-smart-preview-wrap" hidden>
+            <p class="extdl-smart-preview-title">Theme Preview</p>
+            <div class="extdl-smart-preview" id="extdl-smart-preview">
+                <div class="extdl-smart-preview-sidebar" id="extdl-smart-preview-sidebar"></div>
+                <div class="extdl-smart-preview-editor" id="extdl-smart-preview-editor">
+                    <div class="extdl-smart-preview-line"></div>
+                    <div class="extdl-smart-preview-line short"></div>
+                    <div class="extdl-smart-preview-line medium"></div>
+                    <div class="extdl-smart-preview-line"></div>
+                    <div class="extdl-smart-preview-line short"></div>
+                </div>
+            </div>
+            <div class="extdl-smart-palette" id="extdl-smart-palette"></div>
+        </div>
+        <div class="extdl-smart-tags-wrap" id="extdl-smart-tags-wrap" hidden>
+            <div class="extdl-smart-tags" id="extdl-smart-tags"></div>
+        </div>
+        <div class="extdl-smart-progress-wrap" id="extdl-smart-progress-wrap" hidden>
+            <div class="extdl-smart-progress-track">
+                <div class="extdl-smart-progress-bar" id="extdl-smart-progress-bar"></div>
+            </div>
+            <div class="extdl-smart-progress-label" id="extdl-smart-progress-label">Preparing download...</div>
+        </div>
+        <div class="extdl-smart-status" id="extdl-smart-status" hidden>
+            <i class="fas fa-circle-check"></i>
+            <span id="extdl-smart-status-text">Installed successfully</span>
+        </div>
+        <div class="extdl-smart-actions" id="extdl-smart-actions"></div>
+    `;
+}
+
+async function installAllRepoExtensions(extensions, categoryCtx = null) {
+    const notInstalled = extensions.filter(ext => !installedExtensionsCache.some(e => e.id === ext.id));
+    const ctxLabel = categoryCtx ? categoryCtx.plural : 'extensions';
+    const ctxIcon = categoryCtx ? categoryCtx.icon : 'fa-boxes-stacked';
+
+    if (notInstalled.length === 0) {
+        showNotification(`All ${ctxLabel} are already installed!`, 'info');
+        return;
+    }
+
+    const loadingExt = {
+        id: '_batch',
+        displayName: `Installing ${notInstalled.length} ${ctxLabel}`,
+        name: 'Batch Install',
+        description: `Installing ${notInstalled.length} ${ctxLabel} from the repository...`,
+        author: 'Project Manager Pro',
+        version: `${notInstalled.length} ${ctxLabel}`,
+        category: categoryCtx ? categoryCtx.label.toLowerCase() : 'batch',
+        icon: ctxIcon
+    };
+
+    showExtdlDialog(loadingExt, {
+        mode: 'progress',
+        context: 'batch-install',
+        showProgress: true,
+        progressLabel: 'Starting batch install...',
+        actions: []
+    });
+
+    let installed = 0;
+    let failed = 0;
+
+    for (let i = 0; i < notInstalled.length; i++) {
+        const ext = notInstalled[i];
+        const isTheme = ext.category === 'themes' || ext.type === 'themes';
+        const pct = Math.round(((i + 1) / notInstalled.length) * 100);
+        setExtdlProgress(pct, `Installing ${ext.displayName || ext.name}... (${i + 1}/${notInstalled.length})`);
+
+        try {
+            const manifest = {
+                name: ext.id,
+                displayName: ext.displayName || ext.name,
+                version: ext.version || '1.0.0',
+                description: ext.description || '',
+                publisher: ext.author || 'GitHub',
+                category: ext.category || 'general',
+                rating: ext.rating,
+                downloads: ext.downloads,
+                icon: ext.icon || '',
+                tags: ext.tags || []
+            };
+
+            const files = { 'manifest.json': JSON.stringify(manifest, null, 2) };
+
+            if (isTheme && ext.themeCSS) {
+                manifest.main = 'theme.css';
+                manifest.colors = ext.colors || ext.preview?.palette || [];
+                manifest.preview = ext.preview || {};
+                files['manifest.json'] = JSON.stringify(manifest, null, 2);
+                files['theme.css'] = ext.themeCSS;
+            }
+
+            if (ext.settings) {
+                manifest.settingsSchema = ext.settings;
+                files['manifest.json'] = JSON.stringify(manifest, null, 2);
+            }
+
+            const result = await ipcRenderer.invoke('install-extension', {
+                id: ext.id,
+                name: ext.displayName || ext.name,
+                type: isTheme ? 'themes' : 'installed',
+                files
+            });
+
+            if (result.success) installed++;
+            else failed++;
+        } catch {
+            failed++;
+        }
+    }
+
+    clearExtdlIndeterminate();
+    const { progressWrap: pw } = getExtdlDialogElements();
+    if (pw) pw.hidden = true;
+
+    if (failed === 0) {
+        setExtdlMode('success');
+        setExtdlStatus(`Successfully installed ${installed} ${ctxLabel}!`);
+    } else {
+        setExtdlMode('success');
+        setExtdlStatus(`Installed ${installed} ${ctxLabel} (${failed} failed)`);
+    }
+
+    setExtdlActions([
+        { label: 'Done', value: 'done', variant: 'primary', icon: 'fa-check' }
+    ]);
+
+    markExtensionsCacheDirty();
+    await loadInstalledExtensions({ force: true });
+    await loadThemeExtensions();
+}
+
+// Make globally accessible
+window.showExtensionInstallDialog = showExtensionInstallDialog;
+window.fetchAndShowRepoExtensions = fetchAndShowRepoExtensions;
+window.showRepoExtensionsBrowser = showRepoExtensionsBrowser;
 
 // Command palette
 

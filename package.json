@@ -27,10 +27,42 @@
     "directories": {
       "output": "dist"
     },
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!coverage/**",
+      "!tmp/**",
+      "!standalone/**",
+      "!keygen/**",
+      "!tests/**",
+      "!scripts/**",
+      "!.github/**",
+      "!.claude/**",
+      "!todo",
+      "!tmp_write_test.txt"
+    ],
+    "asarUnpack": [
+      "assets/**",
+      "extensions/**"
+    ],
     "extraResources": [
       {
-        "from": "assets/delete.png",
-        "to": "assets/delete.png"
+        "from": "assets",
+        "to": "assets",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "extensions",
+        "to": "extensions",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "version.json",
+        "to": "version.json"
       }
     ],
     "win": {

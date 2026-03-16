@@ -152,6 +152,13 @@ let logViewerController = null;
 const rendererFaultRecentReports = new Map();
 let rendererFaultReportingInitialized = false;
 
+let extdlDialogResolve = null;
+let extdlDialogKeyHandler = null;
+let extdlDialogMotionTimer = null;
+let repoExtensionsCache = [];
+let repoExtensionsFetchInFlight = false;
+const EXTDL_SMART_DIALOG_EXIT_MS = 200;
+
 const SETTINGS_EXTENSION_UPDATE_INTERVALS = new Set(['hourly', 'daily', 'weekly', 'monthly', 'never']);
 const SETTINGS_TERMINAL_APPS = new Set(['cmd', 'powershell', 'wt', 'bash']);
 const SETTINGS_UPDATE_CHANNELS = new Set(['stable', 'beta', 'alpha']);

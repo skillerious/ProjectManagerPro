@@ -141,6 +141,106 @@ function registerExtensionIpcHandlers({
       return { success: false, error: error.message };
     }
   });
+
+  ipcMain.handle('fetch-repo-extensions', async () => {
+    const https = require('https');
+    const REPO_API_URL = 'https://api.github.com/repos/skillerious/ProjectManagerPro/contents/extensions';
+
+    try {
+      const fetchJson = (url) => new Promise((resolve, reject) => {
+        https.get(url, {
+          headers: {
+            'User-Agent': 'AppManager-Pro/1.0',
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        }, (res) => {
+          if (res.statusCode === 301 || res.statusCode === 302) {
+            return fetchJson(res.headers.location).then(resolve).catch(reject);
+          }
+          let body = '';
+          res.on('data', (chunk) => { body += chunk; });
+          res.on('end', () => {
+            if (res.statusCode !== 200) {
+              reject(new Error(`GitHub API returned ${res.statusCode}`));
+              return;
+            }
+            try { resolve(JSON.parse(body)); }
+            catch (e) { reject(e); }
+          });
+          res.on('error', reject);
+        }).on('error', reject);
+      });
+
+      const fetchRaw = (url) => new Promise((resolve, reject) => {
+        https.get(url, {
+          headers: { 'User-Agent': 'AppManager-Pro/1.0' }
+        }, (res) => {
+          if (res.statusCode === 301 || res.statusCode === 302) {
+            return fetchRaw(res.headers.location).then(resolve).catch(reject);
+          }
+          let body = '';
+          res.on('data', (chunk) => { body += chunk; });
+          res.on('end', () => {
+            if (res.statusCode !== 200) {
+              reject(new Error(`HTTP ${res.statusCode}`));
+              return;
+            }
+            resolve(body);
+          });
+          res.on('error', reject);
+        }).on('error', reject);
+      });
+
+      // List extension directories
+      const entries = await fetchJson(REPO_API_URL);
+      const dirs = entries.filter(e => e.type === 'dir');
+      const mainWindow = getMainWindow();
+      const extensions = [];
+      let completed = 0;
+
+      for (const dir of dirs) {
+        try {
+          // Fetch manifest.json for each extension
+          const manifestUrl = `https://raw.githubusercontent.com/skillerious/ProjectManagerPro/main/extensions/${dir.name}/manifest.json`;
+          const manifestRaw = await fetchRaw(manifestUrl);
+          // Strip UTF-8 BOM if present
+          const manifestClean = manifestRaw.charCodeAt(0) === 0xFEFF ? manifestRaw.slice(1) : manifestRaw;
+          const manifest = JSON.parse(manifestClean);
+
+          // Fetch theme.css if it exists
+          let themeCSS = null;
+          if (manifest.main === 'theme.css') {
+            const cssUrl = `https://raw.githubusercontent.com/skillerious/ProjectManagerPro/main/extensions/${dir.name}/theme.css`;
+            themeCSS = await fetchRaw(cssUrl);
+          }
+
+          extensions.push({
+            ...manifest,
+            themeCSS,
+            repoDir: dir.name,
+            source: 'github-repo'
+          });
+        } catch (err) {
+          logger.warn('Failed to fetch extension from repo', { dir: dir.name, error: err.message });
+        }
+
+        completed++;
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('extension-download-progress', {
+            phase: 'fetching',
+            current: completed,
+            total: dirs.length,
+            name: dir.name
+          });
+        }
+      }
+
+      return { success: true, extensions };
+    } catch (error) {
+      logger.error('Failed to fetch repo extensions', { error: error.message });
+      return { success: false, error: error.message, extensions: [] };
+    }
+  });
 }
 
 module.exports = {

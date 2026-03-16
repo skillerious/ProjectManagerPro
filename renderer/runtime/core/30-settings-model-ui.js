@@ -461,12 +461,46 @@ function applyAccentColorSetting(value) {
     document.documentElement.style.setProperty('--accent-primary', safeValue);
 }
 
+function loadGoogleFont(gfontSpec) {
+    if (!gfontSpec) return;
+    const linkId = `gfont-${gfontSpec.replace(/[^a-zA-Z0-9]/g, '-')}`;
+    if (document.getElementById(linkId)) return;
+    const link = document.createElement('link');
+    link.id = linkId;
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${gfontSpec}&display=swap`;
+    document.head.appendChild(link);
+}
+
 function applyFontFamilySetting(value) {
     if (!value || value === 'system') {
         document.body.style.fontFamily = '';
+        updateFontPreview('system');
         return;
     }
+
+    // Check if this font needs loading from Google Fonts
+    const fontSelect = document.getElementById('font-family');
+    if (fontSelect) {
+        const selected = Array.from(fontSelect.options).find(o => o.value === value);
+        const gfontSpec = selected?.dataset?.gfont;
+        if (gfontSpec) {
+            loadGoogleFont(gfontSpec);
+        }
+    }
+
     document.body.style.fontFamily = value;
+    updateFontPreview(value);
+}
+
+function updateFontPreview(value) {
+    const sample = document.getElementById('font-preview-sample');
+    if (!sample) return;
+    if (!value || value === 'system') {
+        sample.style.fontFamily = '';
+    } else {
+        sample.style.fontFamily = value;
+    }
 }
 
 function applyFontSizeSetting(value) {
